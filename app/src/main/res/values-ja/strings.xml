@@ -151,6 +151,7 @@
     <string name="str_select_chain">チェーン選択</string>
     <string name="str_insufficient_balance">手数料として使用する%1$sコインが不足しています。</string>
     <string name="str_mint_photon">PHOTON発行</string>
+    <string name="str_view_private_key">秘密鍵を表示</string>
 
 
     //title
@@ -283,6 +284,7 @@
     <string name="title_support_inject">インジェクションをサポート</string>
     <string name="title_select_option">ソートオプション選択</string>
     <string name="title_enter_memo">メモ入力</string>
+    <string name="title_network_error">ネットワークエラー</string>
 
 
     <string name="str_update_msg">新しいバージョンが出ました。 \n\nプレイストアでアップデートをお願いします。</string>
@@ -438,6 +440,7 @@
     <string name="error_minimum_rent">レントのために最低でも ^1 SOL を送金してください。</string>
     <string name="error_tranfer_disabled_vrise">vRISE コインはステーキング専用の資産です。\n送信できません。</string>
     <string name="error_not_swap_of_route">ルートの安定性に問題があるため、現在スワップはサポートされていません。</string>
+    <string name="error_network_messge">現在ネットワークに接続できません。しばらくしてからもう一度お試しください。</string>
 
 
     <string name="tx_unknown">不明</string>

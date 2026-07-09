@@ -202,6 +202,7 @@
     <string name="str_select_chain">Select chain</string>
     <string name="str_insufficient_balance">Insufficient %1$s balance for fees.</string>
     <string name="str_mint_photon">Mint PHOTON</string>
+    <string name="str_view_private_key">View Private Key</string>
 
 
     //title
@@ -372,6 +373,7 @@
     <string name="title_enter_memo">Enter Memo</string>
     <string name="title_universal_address" translatable="false">Universal Address</string>
     <string name="title_btc_staking_reward" translatable="false">%1$s Staking Reward</string>
+    <string name="title_network_error">Network Error</string>
 
 
     // msg
@@ -576,6 +578,7 @@
     <string name="error_minimum_rent">Send amount at least ^1 SOL for the rent</string>
     <string name="error_tranfer_disabled_vrise">vRISE is a staking-only asset.\nTransmission is not possible.</string>
     <string name="error_not_swap_of_route">Swap is not currently supported due to stability issues in the route</string>
+    <string name="error_network_messge">Unable to connect to the network. Please try again later.</string>
 
 
     // tx

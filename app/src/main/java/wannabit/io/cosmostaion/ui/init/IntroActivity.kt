@@ -43,10 +43,12 @@ import wannabit.io.cosmostaion.database.AppDatabase
 import wannabit.io.cosmostaion.database.Prefs
 import wannabit.io.cosmostaion.database.legacy.LegacyMigrationHelper
 import wannabit.io.cosmostaion.databinding.ActivityIntroBinding
+import wannabit.io.cosmostaion.databinding.DialogNetworkBinding
 import wannabit.io.cosmostaion.databinding.DialogUpdateAppBinding
 import wannabit.io.cosmostaion.ui.main.CosmostationApp
 import wannabit.io.cosmostaion.ui.main.MainActivity
 import wannabit.io.cosmostaion.ui.main.dapp.DappActivity
+import wannabit.io.cosmostaion.ui.main.setting.wallet.account.AccountActivity
 import wannabit.io.cosmostaion.ui.main.setting.wallet.account.AccountInitListener
 import wannabit.io.cosmostaion.ui.main.setting.wallet.account.AccountInitSelectFragment
 import wannabit.io.cosmostaion.ui.password.AppLockActivity
@@ -362,11 +364,27 @@ class IntroActivity : AppCompatActivity() {
     }
 
     private fun showNetworkErrorDialog() {
-        val snackBar = Snackbar.make(binding.root, "Network error", Snackbar.LENGTH_INDEFINITE)
-        snackBar.setAction("Retry") {
-            walletViewModel.walletAppVersion()
+        val binding = DialogNetworkBinding.inflate(layoutInflater)
+        val alertDialog =
+            AlertDialog.Builder(this, R.style.AppTheme_AlertDialogTheme).setView(binding.root)
+
+        val dialog = alertDialog.create()
+        dialog.show()
+        dialog.setCancelable(false)
+
+        binding.apply {
+            btnRetry.setOnClickListener {
+                walletViewModel.walletAppVersion()
+            }
+
+            btnViewKey.setOnClickListener {
+                Intent(this@IntroActivity, AccountActivity::class.java).apply {
+                    putExtra("mode", 1)
+                    startActivity(this)
+                    this@IntroActivity.toMoveAnimation()
+                }
+            }
         }
-        snackBar.show()
     }
 
     private fun showDisableDialog() {

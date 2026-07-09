@@ -30,13 +30,16 @@ class AccountManageOptionFragment : BottomSheetDialogFragment() {
 
     private var isClickable = true
 
+    private var mode = 0
+
     companion object {
         @JvmStatic
         fun newInstance(
-            baseAccount: BaseAccount, listener: AccountManageListener
+            baseAccount: BaseAccount, mode:Int, listener: AccountManageListener
         ): AccountManageOptionFragment {
             val args = Bundle().apply {
                 putParcelable("baseAccount", baseAccount)
+                putInt("mode", mode)
             }
             val fragment = AccountManageOptionFragment()
             fragment.arguments = args
@@ -71,6 +74,15 @@ class AccountManageOptionFragment : BottomSheetDialogFragment() {
                 (arguments?.getParcelable("baseAccount") as? BaseAccount)?.let {
                     account = it
                 }
+            }
+            arguments?.getInt("mode")?.let { mode = it }
+
+            if (mode == 1) {
+                nameLayout.visibility = View.GONE
+                deleteLayout.visibility = View.GONE
+            } else {
+                nameLayout.visibility = View.VISIBLE
+                deleteLayout.visibility = View.VISIBLE
             }
 
             if (account.type == BaseAccountType.MNEMONIC) {

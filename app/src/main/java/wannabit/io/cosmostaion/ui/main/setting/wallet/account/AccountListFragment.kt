@@ -69,6 +69,20 @@ class AccountListFragment : Fragment() {
 
     private var isClickable = true
 
+    private var mode = 0
+
+    companion object {
+        @JvmStatic
+        fun newInstance(mode: Int): AccountListFragment {
+            val args = Bundle().apply {
+                putInt("mode", mode)
+            }
+            val fragment = AccountListFragment()
+            fragment.arguments = args
+            return fragment
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -87,6 +101,9 @@ class AccountListFragment : Fragment() {
     }
 
     private fun initData() {
+        arguments?.getInt("mode")?.let { mode = it }
+        binding.btnAddAccount.visibleOrGone(mode == 0)
+
         binding.recycler.apply {
             CoroutineScope(Dispatchers.IO).launch {
                 val appDatabase = AppDatabase.getInstance()
@@ -152,7 +169,7 @@ class AccountListFragment : Fragment() {
             accountListAdapter.setOnItemClickListener { account ->
                 handleOneClickWithDelay(
                     AccountManageOptionFragment.newInstance(
-                        account, accountManageSelectAction
+                        account, mode, accountManageSelectAction
                     )
                 )
             }
@@ -369,6 +386,7 @@ class AccountListFragment : Fragment() {
             }
         }
 
+    @SuppressLint("WrongConstant")
     private fun startImportBarcodeActivity() {
         val intent = Intent(requireContext(), ImportBarcodeActivity::class.java)
         qrCodeResultLauncher.launch(intent)

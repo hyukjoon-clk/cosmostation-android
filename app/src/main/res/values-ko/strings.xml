@@ -145,6 +145,7 @@
     <string name="str_select_chain">체인 선택</string>
     <string name="str_insufficient_balance">수수료로 사용할 %1$s 코인이 부족합니다.</string>
     <string name="str_mint_photon">PHOTON 발행</string>
+    <string name="str_view_private_key">키 보기</string>
 
 
     //title
@@ -279,6 +280,7 @@
     <string name="title_support_inject">인젝션 지원</string>
     <string name="title_select_option">정렬 옵션 선택</string>
     <string name="title_enter_memo">메모 입력</string>
+    <string name="title_network_error">네트워크 에러</string>
 
 
     // msg
@@ -436,6 +438,7 @@
     <string name="error_minimum_rent">렌트 비용을 위해 최소 ^1 SOL 보내야 합니다.</string>
     <string name="error_tranfer_disabled_vrise">vRISE는 스테이킹 전용 자산입니다.\n전송이 불가능합니다.</string>
     <string name="error_not_swap_of_route">현재 라우트의 안정성 문제로 스왑이 지원 되지 않습니다.</string>
+    <string name="error_network_messge">현재 네트워크에 접속할 수 없습니다. 잠시후 다시 시도해 주세요.</string>
 
 
     //header
