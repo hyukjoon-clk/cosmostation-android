@@ -15,6 +15,7 @@ import wannabit.io.cosmostaion.common.CosmostationConstants
 import wannabit.io.cosmostaion.common.disableFlagSecure
 import wannabit.io.cosmostaion.common.enableFlagSecure
 import wannabit.io.cosmostaion.common.toMoveFragment
+import wannabit.io.cosmostaion.common.visibleOrGone
 import wannabit.io.cosmostaion.database.CryptoHelper
 import wannabit.io.cosmostaion.database.model.BaseAccount
 import wannabit.io.cosmostaion.databinding.FragmentMnemonicCheckBinding
@@ -33,9 +34,10 @@ class MnemonicCheckFragment : Fragment() {
 
     companion object {
         @JvmStatic
-        fun newInstance(baseAccount: BaseAccount): MnemonicCheckFragment {
+        fun newInstance(baseAccount: BaseAccount, mode: Int): MnemonicCheckFragment {
             val args = Bundle().apply {
                 putParcelable("baseAccount", baseAccount)
+                putInt("mode", mode)
             }
             val fragment = MnemonicCheckFragment()
             fragment.arguments = args
@@ -83,6 +85,8 @@ class MnemonicCheckFragment : Fragment() {
                     account = it
                 }
             }
+            val mode =  arguments?.getInt("mode") ?: 0
+            binding.btnSelect.visibleOrGone(mode == 0)
             recycler.setBackgroundResource(R.drawable.item_bg)
 
             account.apply {

@@ -349,7 +349,7 @@ class AccountListFragment : Fragment() {
                         manageAccount?.let { account ->
                             requireActivity().toMoveFragment(
                                 this@AccountListFragment,
-                                MnemonicCheckFragment.newInstance(account),
+                                MnemonicCheckFragment.newInstance(account, mode),
                                 MnemonicCheckFragment::class.java.name
                             )
                         }
