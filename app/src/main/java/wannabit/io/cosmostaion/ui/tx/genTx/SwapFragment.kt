@@ -989,28 +989,28 @@ class SwapFragment : BaseTxFragment() {
         val fee = inputChain?.skipAffiliate()
         val result: MutableMap<String, ChainInfo> = mutableMapOf()
         result["osmosis-1"] = ChainInfo(
-            listOf(Affiliate("osmo1clpqr4nrk4khgkxj78fcwwh6dl3uw4epasmvnj", fee))
+            listOf(Affiliate("osmo1cdmu8tugtzfnuqyquwfrafrgk88neffr5mucpd", fee))
         )
         result["neutron-1"] = ChainInfo(
-            listOf(Affiliate("neutron1clpqr4nrk4khgkxj78fcwwh6dl3uw4ep35p7l8", fee))
+            listOf(Affiliate("neutron1cdmu8tugtzfnuqyquwfrafrgk88neffrclx2dc", fee))
         )
         result["phoenix-1"] = ChainInfo(
-            listOf(Affiliate("terra1564j3fq8p8np4yhh4lytnftz33japc03wuejxm", fee))
+            listOf(Affiliate("terra1pq7p2hfk6256v3dvmjhhz3nutl893l7eneh0dz", fee))
         )
         result["columbus-5"] = ChainInfo(
-            listOf(Affiliate("terra1564j3fq8p8np4yhh4lytnftz33japc03wuejxm", fee))
+            listOf(Affiliate("terra1pq7p2hfk6256v3dvmjhhz3nutl893l7eneh0dz", fee))
         )
         result["pacific-1"] = ChainInfo(
-            listOf(Affiliate("sei1hnkkqnzwmyw652muh6wfea7xlfgplnyj3edm09", fee))
+            listOf(Affiliate("sei1sj8xwx0tcmkrcz0l69z9p5eykhylzlqt0vhg3c", fee))
         )
         result["injective-1"] = ChainInfo(
-            listOf(Affiliate("inj1rvqzf9u2uxttmshn302anlknfgsatrh5mcu6la", fee))
+            listOf(Affiliate("inj162fqjk2wdswzzvvejv70vvn52zgvfya0rz6j7p", fee))
         )
         result["chihuahua-1"] = ChainInfo(
-            listOf(Affiliate("chihuahua1tgcypttehx3afugys6eq28h0kpmswfkgcuewfw", fee))
+            listOf(Affiliate("chihuahua1cdmu8tugtzfnuqyquwfrafrgk88neffrl4zxka", fee))
         )
         result["core-1"] = ChainInfo(
-            listOf(Affiliate("persistence1rq598kexpsdmhxq63qq74v3tf22u6yvl2a47xk", fee))
+            listOf(Affiliate("persistence1cdmu8tugtzfnuqyquwfrafrgk88neffrjvfmem", fee))
         )
         return result
     }
