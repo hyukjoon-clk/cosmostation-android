@@ -1750,104 +1750,104 @@ class DappActivity : BaseActivity() {
                     }
                 }
 
-                // sui
-                "sui_getAccount" -> {
-                    if (selectSuiChain == null) {
-                        selectSuiChain = allChains?.find { it.name == "Sui" }
-                    }
-                    val accountJson = JSONObject()
-                    accountJson.put("address", selectSuiChain?.mainAddress)
-                    accountJson.put("publicKey", "0x" + selectSuiChain?.publicKey?.bytesToHex())
-                    appToWebResult(
-                        messageJson, accountJson, messageId
-                    )
-                }
-
-                "sui_getChain" -> {
-                    selectSuiChain = allChains?.find { it.name == "Sui" }
-                    appToWebResult(
-                        messageJson, "mainnet", messageId
-                    )
-                }
-
-                "sui_basicParam" -> {
-                    if (selectSuiChain == null) {
-                        selectSuiChain = allChains?.find { it.name == "Sui" }
-                    }
-                    val chainJson = JSONObject()
-                    chainJson.put("rpc", (selectSuiChain as ChainSui).suiFetcher()?.suiRpc())
-                    chainJson.put("address", (selectSuiChain as ChainSui).mainAddress)
-                    appToWebResult(
-                        messageJson, chainJson, messageId
-                    )
-                }
-
-                "sui_signTransaction", "sui_signTransactionBlock" -> {
-                    val params = messageJson.getJSONObject("params")
-                    val signBundle = signBundle(0, params.toString(), "sui_signTransaction")
-                    showSuiSignDialog(
-                        signBundle,
-                        object : PopUpSuiSignFragment.WcSignRawDataListener {
-                            override fun sign(id: Long, data: String, signature: String) {
-                                val signed = JSONObject()
-                                signed.put("transactionBlockBytes", data)
-                                signed.put("signature", signature)
-                                appToWebResult(
-                                    messageJson, signed, messageId
-                                )
-                            }
-
-                            override fun cancel(id: Long) {
-                                appToWebError(messageJson, messageId, "User rejected the request.")
-                            }
-                        })
-                }
-
-                "sui_signAndExecuteTransactionBlock", "sui_signAndExecuteTransaction" -> {
-                    val params = messageJson.getJSONObject("params")
-                    val signBundle =
-                        signBundle(0, params.toString(), "sui_signAndExecuteTransactionBlock")
-                    showSuiSignDialog(
-                        signBundle,
-                        object : PopUpSuiSignFragment.WcSignRawDataListener {
-                            override fun sign(id: Long, data: String, signature: String) {
-                                approveSuiSignExecuteRequest(
-                                    messageJson, messageId, data, signature
-                                )
-                            }
-
-                            override fun cancel(id: Long) {
-                                appToWebError(messageJson, messageId, "User rejected the request.")
-                            }
-                        })
-                }
-
-                "sui_signMessage", "sui_signPersonalMessage" -> {
-                    val params = messageJson.getJSONObject("params")
-                    if (params.getString("accountAddress")
-                            .lowercase() != selectSuiChain?.mainAddress?.lowercase()
-                    ) {
-                        appToWebError(messageJson, messageId, "Wrong address")
-                        return
-                    }
-                    val signBundle = signBundle(0, params.toString(), "sui_signMessage")
-                    showSuiSignDialog(
-                        signBundle,
-                        object : PopUpSuiSignFragment.WcSignRawDataListener {
-                            override fun sign(id: Long, data: String, signature: String) {
-                                val signed = JSONObject()
-                                signed.put("messageBytes", data)
-                                signed.put("signature", signature)
-                                appToWebResult(
-                                    messageJson, signed, messageId
-                                )
-                            }
-
-                            override fun cancel(id: Long) {
-                                appToWebError(messageJson, messageId, "User rejected the request.")
-                            }
-                        })
-                }
+//                // sui
+//                "sui_getAccount" -> {
+//                    if (selectSuiChain == null) {
+//                        selectSuiChain = allChains?.find { it.name == "Sui" }
+//                    }
+//                    val accountJson = JSONObject()
+//                    accountJson.put("address", selectSuiChain?.mainAddress)
+//                    accountJson.put("publicKey", "0x" + selectSuiChain?.publicKey?.bytesToHex())
+//                    appToWebResult(
+//                        messageJson, accountJson, messageId
+//                    )
+//                }
+//
+//                "sui_getChain" -> {
+//                    selectSuiChain = allChains?.find { it.name == "Sui" }
+//                    appToWebResult(
+//                        messageJson, "mainnet", messageId
+//                    )
+//                }
+//
+//                "sui_basicParam" -> {
+//                    if (selectSuiChain == null) {
+//                        selectSuiChain = allChains?.find { it.name == "Sui" }
+//                    }
+//                    val chainJson = JSONObject()
+//                    chainJson.put("rpc", (selectSuiChain as ChainSui).suiFetcher()?.suiRpc())
+//                    chainJson.put("address", (selectSuiChain as ChainSui).mainAddress)
+//                    appToWebResult(
+//                        messageJson, chainJson, messageId
+//                    )
+//                }
+//
+//                "sui_signTransaction", "sui_signTransactionBlock" -> {
+//                    val params = messageJson.getJSONObject("params")
+//                    val signBundle = signBundle(0, params.toString(), "sui_signTransaction")
+//                    showSuiSignDialog(
+//                        signBundle,
+//                        object : PopUpSuiSignFragment.WcSignRawDataListener {
+//                            override fun sign(id: Long, data: String, signature: String) {
+//                                val signed = JSONObject()
+//                                signed.put("transactionBlockBytes", data)
+//                                signed.put("signature", signature)
+//                                appToWebResult(
+//                                    messageJson, signed, messageId
+//                                )
+//                            }
+//
+//                            override fun cancel(id: Long) {
+//                                appToWebError(messageJson, messageId, "User rejected the request.")
+//                            }
+//                        })
+//                }
+//
+//                "sui_signAndExecuteTransactionBlock", "sui_signAndExecuteTransaction" -> {
+//                    val params = messageJson.getJSONObject("params")
+//                    val signBundle =
+//                        signBundle(0, params.toString(), "sui_signAndExecuteTransactionBlock")
+//                    showSuiSignDialog(
+//                        signBundle,
+//                        object : PopUpSuiSignFragment.WcSignRawDataListener {
+//                            override fun sign(id: Long, data: String, signature: String) {
+//                                approveSuiSignExecuteRequest(
+//                                    messageJson, messageId, data, signature
+//                                )
+//                            }
+//
+//                            override fun cancel(id: Long) {
+//                                appToWebError(messageJson, messageId, "User rejected the request.")
+//                            }
+//                        })
+//                }
+//
+//                "sui_signMessage", "sui_signPersonalMessage" -> {
+//                    val params = messageJson.getJSONObject("params")
+//                    if (params.getString("accountAddress")
+//                            .lowercase() != selectSuiChain?.mainAddress?.lowercase()
+//                    ) {
+//                        appToWebError(messageJson, messageId, "Wrong address")
+//                        return
+//                    }
+//                    val signBundle = signBundle(0, params.toString(), "sui_signMessage")
+//                    showSuiSignDialog(
+//                        signBundle,
+//                        object : PopUpSuiSignFragment.WcSignRawDataListener {
+//                            override fun sign(id: Long, data: String, signature: String) {
+//                                val signed = JSONObject()
+//                                signed.put("messageBytes", data)
+//                                signed.put("signature", signature)
+//                                appToWebResult(
+//                                    messageJson, signed, messageId
+//                                )
+//                            }
+//
+//                            override fun cancel(id: Long) {
+//                                appToWebError(messageJson, messageId, "User rejected the request.")
+//                            }
+//                        })
+//                }
 
                 //iota
                 "iota_getAccount" -> {

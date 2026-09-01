@@ -22,11 +22,11 @@ class ChainCantoEvm : BaseChain(), Parcelable {
         ChildNumber(44, true), ChildNumber(60, true), ChildNumber.ZERO_HARDENED, ChildNumber.ZERO
     )
 
-    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_LCD
+    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_GRPC
     override var stakeDenom: String = "acanto"
     override var accountPrefix: String = "canto"
-    override var grpcHost: String = ""
-    override var lcdUrl: String = "https://canto-api.polkachu.com/"
+    override var grpcHost: String = "grpc-canto.mainnet.cosmoslabs.kr"
+    override var lcdUrl: String = "https://lcd-canto.mainnet.cosmoslabs.kr/"
 
 
     override var supportEvm: Boolean = true

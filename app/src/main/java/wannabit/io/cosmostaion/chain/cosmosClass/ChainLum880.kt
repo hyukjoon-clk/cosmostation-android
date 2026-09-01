@@ -24,6 +24,6 @@ class ChainLum880 : BaseChain(), Parcelable {
     override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_LCD
     override var stakeDenom: String = "ulum"
     override var accountPrefix: String = "lum"
-    override var grpcHost: String = "lum-grpc.stakerhouse.com"
-    override var lcdUrl: String = "https://lumnetwork_mainnet_api.chain.whenmoonwhenlambo.money/"
+    override var grpcHost: String = "lumnetwork.lavenderfive.com"
+    override var lcdUrl: String = "https://lum-api.polkachu.com/"
 }

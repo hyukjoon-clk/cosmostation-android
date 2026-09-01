@@ -23,11 +23,11 @@ open class ChainNeutron : BaseChain(), Parcelable {
         ChildNumber(44, true), ChildNumber(118, true), ChildNumber.ZERO_HARDENED, ChildNumber.ZERO
     )
 
-    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_LCD
+    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_GRPC
     override var stakeDenom: String = "untrn"
     override var accountPrefix: String = "neutron"
-    override var grpcHost: String = ""
-    override var lcdUrl: String = "https://rest-lb.neutron.org/"
+    override var grpcHost: String = "grpc-neutron.mainnet.cosmoslabs.kr"
+    override var lcdUrl: String = "https://lcd-neutron.mainnet.cosmoslabs.kr/"
 
     override fun cosmosFetcher(): CosmosFetcher? {
         if (cosmosFetcher == null) {

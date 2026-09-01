@@ -150,7 +150,6 @@ import wannabit.io.cosmostaion.chain.evmClass.ChainSomnia
 import wannabit.io.cosmostaion.chain.evmClass.ChainSonic
 import wannabit.io.cosmostaion.chain.evmClass.ChainStory
 import wannabit.io.cosmostaion.chain.evmClass.ChainStratosEvm
-import wannabit.io.cosmostaion.chain.evmClass.ChainTenetEvm
 import wannabit.io.cosmostaion.chain.evmClass.ChainWemix
 import wannabit.io.cosmostaion.chain.evmClass.ChainWorldCoin
 import wannabit.io.cosmostaion.chain.evmClass.ChainXplaEvm
@@ -918,7 +917,6 @@ fun allChains(): MutableList<BaseChain> {
 //    chains.add(ChainSui())
     chains.add(ChainSunrise())
     chains.add(ChainSymphony())
-    chains.add(ChainTenetEvm())
     chains.add(ChainTerra())
     chains.add(ChainTerraClassic())
     chains.add(ChainThorchain())

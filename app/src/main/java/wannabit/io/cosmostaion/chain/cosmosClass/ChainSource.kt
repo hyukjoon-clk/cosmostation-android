@@ -21,9 +21,9 @@ class ChainSource : BaseChain(), Parcelable {
         ChildNumber(44, true), ChildNumber(118, true), ChildNumber.ZERO_HARDENED, ChildNumber.ZERO
     )
 
-    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_LCD
+    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_GRPC
     override var stakeDenom: String = "usource"
     override var accountPrefix: String = "source"
-    override var grpcHost: String = ""
-    override var lcdUrl: String = "https://rest.source.tcnetwork.io/"
+    override var grpcHost: String = "grpc-source.mainnet.cosmoslabs.kr"
+    override var lcdUrl: String = "https://lcd-source.mainnet.cosmoslabs.kr/"
 }

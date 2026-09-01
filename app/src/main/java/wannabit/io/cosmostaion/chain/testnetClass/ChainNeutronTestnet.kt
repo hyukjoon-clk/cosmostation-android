@@ -22,9 +22,9 @@ class ChainNeutronTestnet : ChainNeutron(), Parcelable {
         ChildNumber(44, true), ChildNumber(118, true), ChildNumber.ZERO_HARDENED, ChildNumber.ZERO
     )
 
-    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_LCD
+    override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_GRPC
     override var stakeDenom: String = "untrn"
     override var accountPrefix: String = "neutron"
-    override var grpcHost: String = ""
-    override var lcdUrl: String = "https://rest-falcron.pion-1.ntrn.tech/"
+    override var grpcHost: String = "grpc-neutron.testnet.cosmoslabs.kr"
+    override var lcdUrl: String = "https://lcd-neutron.testnet.cosmoslabs.kr/"
 }
