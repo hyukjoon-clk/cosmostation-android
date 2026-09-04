@@ -26,5 +26,5 @@ class ChainLum118 : BaseChain(), Parcelable {
     override var stakeDenom: String = "ulum"
     override var accountPrefix: String = "lum"
     override var grpcHost: String = "lumnetwork.lavenderfive.com"
-    override var lcdUrl: String = "https://lum-api.polkachu.com/"
+    override var lcdUrl: String = "https://lum-rest.stakerhouse.com"
 }

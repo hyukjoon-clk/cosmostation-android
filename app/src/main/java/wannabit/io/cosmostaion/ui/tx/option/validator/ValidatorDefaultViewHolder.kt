@@ -4,17 +4,12 @@ import android.content.Context
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import coil.ImageLoader
-import coil.decode.SvgDecoder
 import coil.load
-import coil.request.CachePolicy
 import com.cosmos.staking.v1beta1.StakingProto
 import com.google.gson.JsonObject
-import com.squareup.picasso.Picasso
-import com.zrchain.validation.HybridValidationProto
 import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainZenrock
 import wannabit.io.cosmostaion.chain.fetcher.FinalityProvider
 import wannabit.io.cosmostaion.chain.fetcher.iotaValidatorVp
 import wannabit.io.cosmostaion.chain.fetcher.moveValidatorCommission
@@ -83,33 +78,6 @@ class ValidatorDefaultViewHolder(
                 val vpAmount =
                     validator.tokensList.firstOrNull { it.denom == chain.getStakeAssetDenom() }?.amount?.toBigDecimal()
                         ?.movePointLeft(asset.decimals ?: 6) ?: BigDecimal.ZERO
-                votingPower.text = formatAmount(vpAmount.toString(), 0)
-
-                val commissionRate =
-                    validator.commission?.commissionRates?.rate?.toBigDecimal()?.movePointLeft(16)
-                        ?.setScale(2, RoundingMode.DOWN)
-                commission.text = formatString("$commissionRate%", 3)
-            }
-        }
-    }
-
-    fun zenrockBind(chain: ChainZenrock, validator: HybridValidationProto.ValidatorHV) {
-        binding.apply {
-            monikerImg.setMonikerImg(chain, validator.operatorAddress)
-            monikerName.text = validator.description?.moniker?.trim()
-            if (validator.jailed) {
-                jailedImg.visibility = View.VISIBLE
-                jailedImg.setImageResource(R.drawable.icon_jailed)
-            } else if (!validator.isActiveValidator(chain)) {
-                jailedImg.visibility = View.VISIBLE
-                jailedImg.setImageResource(R.drawable.icon_inactive)
-            } else {
-                jailedImg.visibility = View.GONE
-            }
-
-            BaseData.getAsset(chain.apiName, chain.getStakeAssetDenom())?.let { asset ->
-                val vpAmount =
-                    validator.tokensNative?.toBigDecimal()?.movePointLeft(asset.decimals ?: 6)
                 votingPower.text = formatAmount(vpAmount.toString(), 0)
 
                 val commissionRate =

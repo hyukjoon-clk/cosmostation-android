@@ -25,7 +25,6 @@ import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.FetchState
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainBabylon
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainZenrock
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.chain.fetcher.FinalityProvider
 import wannabit.io.cosmostaion.chain.majorClass.ChainAptos
@@ -628,75 +627,6 @@ class WalletViewModel(private val walletRepository: WalletRepository) : ViewMode
                         }
                     }
                     chain.initiaFetcher()?.initiaValidators = dataTempValidators
-
-                } finally {
-                    channel?.shutdown()
-                    try {
-                        if (channel?.awaitTermination(5, TimeUnit.SECONDS) == false) {
-                            channel.shutdownNow()
-                        }
-                    } catch (e: InterruptedException) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-
-            is ChainZenrock -> {
-                if (chain.zenrockFetcher()?.zenrockValidators?.isNotEmpty() == true) {
-                    return@launch
-                }
-                val tempValidators =
-                    mutableListOf<com.zrchain.validation.HybridValidationProto.ValidatorHV>()
-                try {
-                    val loadBondedDeferred =
-                        async { walletRepository.zenrockBondedValidator(channel, chain) }
-                    val loadUnBondedDeferred =
-                        async { walletRepository.zenrockUnBondedValidator(channel, chain) }
-                    val loadUnBondingDeferred =
-                        async { walletRepository.zenrockUnBondingValidator(channel, chain) }
-
-                    val bondedValidatorsResult = loadBondedDeferred.await()
-                    if (bondedValidatorsResult is NetworkResult.Success) {
-                        bondedValidatorsResult.data.let { data ->
-                            if (data is Collection<*>) {
-                                tempValidators.addAll(data as Collection<com.zrchain.validation.HybridValidationProto.ValidatorHV>)
-                            }
-                        }
-                    }
-
-                    val unBondedValidatorsResult = loadUnBondedDeferred.await()
-                    if (unBondedValidatorsResult is NetworkResult.Success) {
-                        unBondedValidatorsResult.data.let { data ->
-                            if (data is Collection<*>) {
-                                tempValidators.addAll(data as Collection<com.zrchain.validation.HybridValidationProto.ValidatorHV>)
-                            }
-                        }
-                    }
-
-                    val unBondingValidatorsResult = loadUnBondingDeferred.await()
-                    if (unBondingValidatorsResult is NetworkResult.Success) {
-                        unBondingValidatorsResult.data.let { data ->
-                            if (data is Collection<*>) {
-                                tempValidators.addAll(data as Collection<com.zrchain.validation.HybridValidationProto.ValidatorHV>)
-                            }
-                        }
-                    }
-
-                    chain.zenrockFetcher()?.zenrockOriginValidators?.addAll(tempValidators)
-
-                    val dataTempValidators = tempValidators.toMutableList()
-                    dataTempValidators.sortWith { o1, o2 ->
-                        when {
-                            o1.description.moniker == "Cosmostation" -> -1
-                            o2.description.moniker == "Cosmostation" -> 1
-                            o1.jailed && !o2.jailed -> 1
-                            !o1.jailed && o2.jailed -> -1
-                            o1.tokensNative.toDouble() > o2.tokensNative.toDouble() -> -1
-                            o1.tokensNative.toDouble() < o2.tokensNative.toDouble() -> 1
-                            else -> 0
-                        }
-                    }
-                    chain.zenrockFetcher()?.zenrockValidators = dataTempValidators
 
                 } finally {
                     channel?.shutdown()

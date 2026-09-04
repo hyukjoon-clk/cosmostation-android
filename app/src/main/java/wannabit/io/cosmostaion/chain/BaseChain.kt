@@ -18,7 +18,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainAllora
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainAlthea118
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainAndromeda
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainArchway
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainAssetMantle
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainAtomone
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainAxelar
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainAxone
@@ -107,7 +106,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainUnification
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainUnion
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainXion
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainXpla
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainZenrock
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainZigChain
 import wannabit.io.cosmostaion.chain.evmClass.ChainAiozEvm
 import wannabit.io.cosmostaion.chain.evmClass.ChainAltheaEvm
@@ -790,7 +788,6 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainAptos())
     chains.add(ChainArbitrum())
     chains.add(ChainArchway())
-    chains.add(ChainAssetMantle())
     chains.add(ChainAtomone())
     chains.add(ChainAvalanche())
     chains.add(ChainAxelar())
@@ -928,7 +925,6 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainXplaEvm())
     chains.add(ChainXpla())
     chains.add(ChainXrplEvm())
-    chains.add(ChainZenrock())
     chains.add(ChainZeroGravity())
     chains.add(ChainZetaEvm())
     chains.add(ChainZigChain())

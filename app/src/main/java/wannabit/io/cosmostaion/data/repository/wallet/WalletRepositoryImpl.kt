@@ -49,7 +49,6 @@ import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.CosmosEndPointType
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainBabylon
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainZenrock
 import wannabit.io.cosmostaion.chain.cosmosClass.NEUTRON_VESTING_CONTRACT_ADDRESS
 import wannabit.io.cosmostaion.chain.fetcher.BabylonFetcher
 import wannabit.io.cosmostaion.chain.fetcher.IotaFetcher
@@ -73,8 +72,6 @@ import wannabit.io.cosmostaion.chain.fetcher.rewards
 import wannabit.io.cosmostaion.chain.fetcher.sequence
 import wannabit.io.cosmostaion.chain.fetcher.unDelegations
 import wannabit.io.cosmostaion.chain.fetcher.validators
-import wannabit.io.cosmostaion.chain.fetcher.zenrockDelegations
-import wannabit.io.cosmostaion.chain.fetcher.zenrockUnDelegations
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
 import wannabit.io.cosmostaion.chain.majorClass.ChainSolana
@@ -818,120 +815,6 @@ class WalletRepositoryImpl : WalletRepository {
             safeApiCall(Dispatchers.IO) {
                 lcdApi(chain).lcdInitiaUnBondingValidatorInfo()
                     .initiaValidators(com.initia.mstaking.v1.StakingProto.BondStatus.BOND_STATUS_UNBONDING)
-            }
-        }
-    }
-
-    override suspend fun zenrockDelegation(
-        channel: ManagedChannel?, chain: ChainZenrock
-    ): NetworkResult<MutableList<com.zrchain.validation.StakingProto.DelegationResponse>> {
-        return if (chain.zenrockFetcher()?.endPointType(chain) == CosmosEndPointType.USE_GRPC) {
-            val stub = com.zrchain.validation.QueryGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(duration, TimeUnit.SECONDS)
-            val request =
-                com.zrchain.validation.QueryProto.QueryDelegatorDelegationsRequest.newBuilder()
-                    .setDelegatorAddr(chain.address).build()
-            safeApiCall(Dispatchers.IO) {
-                stub.delegatorDelegations(request).delegationResponsesList
-            }
-        } else {
-            safeApiCall(Dispatchers.IO) {
-                lcdApi(chain).lcdDelegationInfo(chain.address).zenrockDelegations()
-            }
-        }
-    }
-
-    override suspend fun zenrockUnBonding(
-        channel: ManagedChannel?, chain: ChainZenrock
-    ): NetworkResult<MutableList<com.zrchain.validation.StakingProto.UnbondingDelegation>> {
-        return if (chain.zenrockFetcher()?.endPointType(chain) == CosmosEndPointType.USE_GRPC) {
-            val stub = com.zrchain.validation.QueryGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(duration, TimeUnit.SECONDS)
-            val request =
-                com.zrchain.validation.QueryProto.QueryDelegatorUnbondingDelegationsRequest.newBuilder()
-                    .setDelegatorAddr(chain.address).build()
-            safeApiCall(Dispatchers.IO) {
-                stub.delegatorUnbondingDelegations(request).unbondingResponsesList
-            }
-        } else {
-            safeApiCall(Dispatchers.IO) {
-                lcdApi(chain).lcdUnBondingInfo(chain.address).zenrockUnDelegations()
-            }
-        }
-    }
-
-    override suspend fun zenrockBondedValidator(
-        channel: ManagedChannel?, chain: ChainZenrock
-    ): NetworkResult<MutableList<com.zrchain.validation.HybridValidationProto.ValidatorHV>> {
-        return if (chain.zenrockFetcher()?.endPointType(chain) == CosmosEndPointType.USE_GRPC) {
-            val pageRequest = PaginationProto.PageRequest.newBuilder().setLimit(500).build()
-            val stub = com.zrchain.validation.QueryGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(duration, TimeUnit.SECONDS)
-            val request = com.zrchain.validation.QueryProto.QueryValidatorsRequest.newBuilder()
-                .setPagination(pageRequest).setStatus("BOND_STATUS_BONDED").build()
-            safeApiCall(Dispatchers.IO) {
-                stub.validators(request).validatorsList
-            }
-        } else {
-            safeApiCall(Dispatchers.IO) {
-                lcdApi(chain).lcdBondedValidatorInfo()
-                    .validators(com.zrchain.validation.StakingProto.BondStatus.BOND_STATUS_BONDED)
-            }
-        }
-    }
-
-    override suspend fun zenrockUnBondedValidator(
-        channel: ManagedChannel?, chain: ChainZenrock
-    ): NetworkResult<MutableList<com.zrchain.validation.HybridValidationProto.ValidatorHV>> {
-        return if (chain.zenrockFetcher()?.endPointType(chain) == CosmosEndPointType.USE_GRPC) {
-            channel?.let {
-                val pageRequest = PaginationProto.PageRequest.newBuilder().setLimit(500).build()
-                val stub = com.zrchain.validation.QueryGrpc.newBlockingStub(channel)
-                    .withDeadlineAfter(duration, TimeUnit.SECONDS)
-                val request = com.zrchain.validation.QueryProto.QueryValidatorsRequest.newBuilder()
-                    .setPagination(pageRequest).setStatus("BOND_STATUS_UNBONDED").build()
-                safeApiCall(Dispatchers.IO) {
-                    stub.validators(request).validatorsList
-                }
-
-            } ?: run {
-                safeApiCall(Dispatchers.IO) {
-                    mutableListOf()
-                }
-            }
-
-        } else {
-            safeApiCall(Dispatchers.IO) {
-                lcdApi(chain).lcdUnBondedValidatorInfo()
-                    .validators(com.zrchain.validation.StakingProto.BondStatus.BOND_STATUS_UNBONDED)
-            }
-        }
-    }
-
-    override suspend fun zenrockUnBondingValidator(
-        channel: ManagedChannel?, chain: ChainZenrock
-    ): NetworkResult<MutableList<com.zrchain.validation.HybridValidationProto.ValidatorHV>> {
-        return if (chain.zenrockFetcher()?.endPointType(chain) == CosmosEndPointType.USE_GRPC) {
-            channel?.let {
-                val pageRequest = PaginationProto.PageRequest.newBuilder().setLimit(500).build()
-                val stub = com.zrchain.validation.QueryGrpc.newBlockingStub(channel)
-                    .withDeadlineAfter(duration, TimeUnit.SECONDS)
-                val request = com.zrchain.validation.QueryProto.QueryValidatorsRequest.newBuilder()
-                    .setPagination(pageRequest).setStatus("BOND_STATUS_UNBONDING").build()
-                safeApiCall(Dispatchers.IO) {
-                    stub.validators(request).validatorsList
-                }
-
-            } ?: run {
-                safeApiCall(Dispatchers.IO) {
-                    mutableListOf()
-                }
-            }
-
-        } else {
-            safeApiCall(Dispatchers.IO) {
-                lcdApi(chain).lcdUnBondingValidatorInfo()
-                    .validators(com.zrchain.validation.StakingProto.BondStatus.BOND_STATUS_UNBONDING)
             }
         }
     }

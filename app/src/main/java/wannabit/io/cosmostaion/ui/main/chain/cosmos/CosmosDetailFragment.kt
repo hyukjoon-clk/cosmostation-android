@@ -26,7 +26,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainIxo
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainNeutron
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainOkt996Keccak
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainZenrock
 import wannabit.io.cosmostaion.chain.evmClass.ChainKavaEvm
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.chain.evmClass.ChainShidoEvm
@@ -231,9 +230,10 @@ class CosmosDetailFragment : Fragment() {
             fabCompounding.visibleOrGone(selectedChain.isStakeEnabled() && selectedChain !is ChainSunrise)
             fabVote.goneOrVisible(!selectedChain.isStakeEnabled() || selectedChain is ChainNeutron)
 
-            BaseData.getAsset(selectedChain.apiName, selectedChain.getStakeAssetDenom())?.let { asset ->
-                fabStake.labelText = getString(R.string.title_stake, asset.symbol)
-            }
+            BaseData.getAsset(selectedChain.apiName, selectedChain.getStakeAssetDenom())
+                ?.let { asset ->
+                    fabStake.labelText = getString(R.string.title_stake, asset.symbol)
+                }
 
             when (selectedChain) {
                 is ChainNeutron -> {
@@ -483,13 +483,6 @@ class CosmosDetailFragment : Fragment() {
                         return@setOnClickListener
                     }
 
-                } else if (selectedChain is ChainZenrock) {
-                    if ((selectedChain as ChainZenrock).zenrockFetcher()?.zenrockValidators?.isEmpty() == true) {
-                        requireContext().makeToast(R.string.error_wait_moment)
-                        fabMenu.close(true)
-                        return@setOnClickListener
-                    }
-
                 } else {
                     if (selectedChain.cosmosFetcher?.cosmosValidators?.isEmpty() == true) {
                         requireContext().makeToast(R.string.error_wait_moment)
@@ -521,39 +514,6 @@ class CosmosDetailFragment : Fragment() {
                 when (selectedChain) {
                     is ChainInitia -> {
                         if ((selectedChain as ChainInitia).initiaFetcher()?.initiaValidators?.isNotEmpty() == true) {
-                            if (selectedChain.cosmosFetcher?.rewardAllCoins()?.isEmpty() == true) {
-                                requireContext().makeToast(R.string.error_not_reward)
-                                return@setOnClickListener
-                            }
-                            if (selectedChain.cosmosFetcher?.claimableRewards()
-                                    ?.isEmpty() == true
-                            ) {
-                                requireContext().showToast(view, R.string.error_wasting_fee, false)
-                                return@setOnClickListener
-                            }
-                            if (!selectedChain.isTxFeePayable(requireContext())) {
-                                requireContext().showToast(
-                                    view, R.string.error_not_enough_fee, false
-                                )
-                                return@setOnClickListener
-                            }
-                            handleOneClickWithDelay(
-                                null, ClaimRewardFragment.newInstance(
-                                    selectedChain,
-                                    selectedChain.cosmosFetcher?.claimableRewards(),
-                                    false
-                                )
-                            )
-
-                        } else {
-                            requireContext().makeToast(R.string.error_wait_moment)
-                            fabMenu.close(true)
-                            return@setOnClickListener
-                        }
-                    }
-
-                    is ChainZenrock -> {
-                        if ((selectedChain as ChainZenrock).zenrockFetcher()?.zenrockValidators?.isNotEmpty() == true) {
                             if (selectedChain.cosmosFetcher?.rewardAllCoins()?.isEmpty() == true) {
                                 requireContext().makeToast(R.string.error_not_reward)
                                 return@setOnClickListener
@@ -663,41 +623,6 @@ class CosmosDetailFragment : Fragment() {
                 when (selectedChain) {
                     is ChainInitia -> {
                         if (((selectedChain as ChainInitia).initiaFetcher()?.initiaValidators?.size
-                                ?: 0) > 0
-                        ) {
-                            if (selectedChain.cosmosFetcher?.claimableRewards()?.size == 0) {
-                                requireContext().makeToast(R.string.error_not_reward)
-                                return@setOnClickListener
-                            }
-                            if (selectedChain.cosmosFetcher?.rewardAddress != selectedChain.address) {
-                                requireContext().showToast(
-                                    view, R.string.error_reward_address_changed_msg, false
-                                )
-                                return@setOnClickListener
-                            }
-                            if (!selectedChain.isTxFeePayable(requireContext())) {
-                                requireContext().showToast(
-                                    view, R.string.error_not_enough_fee, false
-                                )
-                                return@setOnClickListener
-                            }
-                            handleOneClickWithDelay(
-                                null, CompoundingFragment.newInstance(
-                                    selectedChain,
-                                    selectedChain.cosmosFetcher?.claimableRewards(),
-                                    false
-                                )
-                            )
-
-                        } else {
-                            requireContext().makeToast(R.string.error_wait_moment)
-                            fabMenu.close(true)
-                            return@setOnClickListener
-                        }
-                    }
-
-                    is ChainZenrock -> {
-                        if (((selectedChain as ChainZenrock).zenrockFetcher()?.zenrockValidators?.size
                                 ?: 0) > 0
                         ) {
                             if (selectedChain.cosmosFetcher?.claimableRewards()?.size == 0) {

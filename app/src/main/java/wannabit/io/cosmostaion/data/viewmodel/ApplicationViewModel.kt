@@ -27,7 +27,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainCheqd
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainNeutron
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainOkt996Keccak
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainZenrock
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.chain.fetcher.FinalityProvider
 import wannabit.io.cosmostaion.chain.fetcher.iotaCoinType
@@ -422,30 +421,6 @@ class ApplicationViewModel(
 
                     if (unBondingResult is NetworkResult.Success && unBondingResult.data is MutableList<*>) {
                         chain.initiaFetcher()?.initiaUnbondings = unBondingResult.data
-                    }
-
-                } else if (chain is ChainZenrock) {
-                    val loadDelegationDeferred =
-                        async { walletRepository.zenrockDelegation(channel, chain) }
-                    val loadUnBondingDeferred =
-                        async { walletRepository.zenrockUnBonding(channel, chain) }
-
-                    val delegationResult = loadDelegationDeferred.await()
-                    val unBondingResult = loadUnBondingDeferred.await()
-
-                    if (delegationResult is NetworkResult.Success && delegationResult.data is MutableList<*>) {
-                        chain.zenrockFetcher()?.zenrockDelegations?.clear()
-                        delegationResult.data.forEach { delegation ->
-                            if (delegation.balance.amount.toBigDecimal() > BigDecimal.ZERO) {
-                                chain.zenrockFetcher()?.zenrockDelegations?.add(
-                                    delegation
-                                )
-                            }
-                        }
-                    }
-
-                    if (unBondingResult is NetworkResult.Success && unBondingResult.data is MutableList<*>) {
-                        chain.zenrockFetcher()?.zenrockUnbondings = unBondingResult.data
                     }
 
                 } else {
