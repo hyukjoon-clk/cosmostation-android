@@ -62,7 +62,8 @@ class HistoryAdapter(
                 val historySuiGroup = suiHistoryList[position]
 
                 historySuiGroup.second.let { header ->
-                    val headerDate = dpTimeToYear(header["timestampMs"].asString.toLong())
+                    val timestampMs = java.time.Instant.parse(header["effects"].asJsonObject["timestamp"].asString).toEpochMilli()
+                    val headerDate = dpTimeToYear(timestampMs)
                     val headerIndex = suiHistoryList.indexOfFirst { it.first == headerDate }
                     val headerCnt = suiHistoryList.filter { it.first == headerDate }.size
                     holder.bindSuiHistory(chain, historySuiGroup, headerIndex, headerCnt, position)

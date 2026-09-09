@@ -115,18 +115,18 @@ class CoinViewHolder(
                     }
 
                     if (metaData != null) {
-                        if (metaData.assetImg().contains("base64")) {
-                            val base64String = metaData.assetImg().substringAfter("base64,")
+                        if (metaData.iconUrl.contains("base64")) {
+                            val base64String = metaData.iconUrl.substringAfter("base64,")
                             val decodedString = Base64.decode(base64String)
                             val base64ToBitmap =
                                 BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
                             tokenImg.setImageBitmap(base64ToBitmap)
                         } else {
-                            tokenImg.setImageFromSvg(metaData.assetImg(), R.drawable.token_default)
+                            tokenImg.setImageFromSvg(metaData.iconUrl, R.drawable.token_default)
                         }
 
-                        tokenName.text = metaData["symbol"].asString
-                        val dpAmount = balance.second?.movePointLeft(metaData["decimals"].asInt)
+                        tokenName.text = metaData.symbol
+                        val dpAmount = balance.second?.movePointLeft(metaData.decimals)
                             ?.setScale(18, RoundingMode.DOWN)
                         coinAmount.text = formatAmount(dpAmount.toString(), 6)
                         return

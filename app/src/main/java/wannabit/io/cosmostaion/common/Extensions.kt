@@ -939,6 +939,13 @@ fun jsonRpcResponse(rpcUrl: String, request: JsonRpcRequest): Response {
     return OkHttpClient().newCall(rpcRequest).execute()
 }
 
+fun graphQlResponse(url: String, query: String, variables: Map<String, Any?>): Response {
+    val body = ObjectMapper().writeValueAsString(mapOf("query" to query, "variables" to variables))
+    val request = Request.Builder().url(url)
+        .post(body.toRequestBody("application/json".toMediaTypeOrNull())).build()
+    return OkHttpClient().newCall(request).execute()
+}
+
 fun CoinProto.DecCoin.getdAmount(): BigDecimal {
     return amount.toBigDecimal().movePointLeft(18).setScale(18, RoundingMode.DOWN)
 }

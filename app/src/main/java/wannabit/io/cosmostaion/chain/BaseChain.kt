@@ -911,7 +911,7 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainStory())
     chains.add(ChainStratosEvm())
     chains.add(ChainStride())
-//    chains.add(ChainSui())
+    chains.add(ChainSui())
     chains.add(ChainSunrise())
     chains.add(ChainSymphony())
     chains.add(ChainTerra())

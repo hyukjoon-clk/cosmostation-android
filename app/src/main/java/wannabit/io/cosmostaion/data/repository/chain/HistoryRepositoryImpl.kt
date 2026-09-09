@@ -6,8 +6,10 @@ import kotlinx.coroutines.Dispatchers
 import retrofit2.Response
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.fetcher.IotaFetcher
-import wannabit.io.cosmostaion.chain.fetcher.SuiFetcher
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
+import wannabit.io.cosmostaion.chain.majorClass.ChainSui
+import wannabit.io.cosmostaion.chain.majorClass.SUI_HISTORY_QUERY
+import wannabit.io.cosmostaion.common.graphQlResponse
 import wannabit.io.cosmostaion.common.jsonRpcResponse
 import wannabit.io.cosmostaion.common.safeApiCall
 import wannabit.io.cosmostaion.data.api.RetrofitInstance
@@ -25,73 +27,29 @@ class HistoryRepositoryImpl : HistoryRepository {
         }
     }
 
-    override suspend fun suiFromHistory(
-        fetcher: SuiFetcher, address: String
-    ): NetworkResult<MutableList<JsonObject>?> {
+    override suspend fun suiHistory(
+        chain: ChainSui, address: String, after: String?
+    ): NetworkResult<Pair<MutableList<JsonObject>, String?>> {
         return try {
-            val param = listOf(
-                mapOf(
-                    "filter" to mapOf("FromAddress" to address), "options" to mapOf(
-                        "showEffects" to true, "showInput" to true, "showBalanceChanges" to true
-                    )
-                ), null, 50, true
+            val response = graphQlResponse(
+                chain.mainUrl, SUI_HISTORY_QUERY,
+                mapOf("addr" to address, "first" to 50, "after" to after)
             )
-
-            val suiFromHistoryRequest = JsonRpcRequest(
-                method = "suix_queryTransactionBlocks", params = param
-            )
-            val suiFromHistoryResponse = jsonRpcResponse(fetcher.suiRpc(), suiFromHistoryRequest)
-            val suiFromHistoryJsonObject = Gson().fromJson(
-                suiFromHistoryResponse.body?.string(), JsonObject::class.java
-            )
+            val json = Gson().fromJson(response.body?.string(), JsonObject::class.java)
+            val txConnection = json["data"]?.asJsonObject?.get("transactions")?.asJsonObject
 
             val result: MutableList<JsonObject> = mutableListOf()
-            suiFromHistoryJsonObject["result"].asJsonObject["data"].asJsonArray.forEach { data ->
-                result.add(data.asJsonObject)
-            }
-            safeApiCall(Dispatchers.IO) {
-                result
-            }
+            txConnection?.get("nodes")?.asJsonArray?.forEach { result.add(it.asJsonObject) }
+
+            val pageInfo = txConnection?.get("pageInfo")?.asJsonObject
+            val nextCursor = if (pageInfo?.get("hasNextPage")?.asBoolean == true) {
+                pageInfo["endCursor"].asString
+            } else null
+
+            safeApiCall(Dispatchers.IO) { Pair(result, nextCursor) }
 
         } catch (e: Exception) {
-            safeApiCall(Dispatchers.IO) {
-                mutableListOf()
-            }
-        }
-    }
-
-    override suspend fun suiToHistory(
-        fetcher: SuiFetcher, address: String
-    ): NetworkResult<MutableList<JsonObject>?> {
-        return try {
-            val param = listOf(
-                mapOf(
-                    "filter" to mapOf("ToAddress" to address), "options" to mapOf(
-                        "showEffects" to true, "showInput" to true, "showBalanceChanges" to true
-                    )
-                ), null, 50, true
-            )
-
-            val suiToHistoryRequest = JsonRpcRequest(
-                method = "suix_queryTransactionBlocks", params = param
-            )
-            val suiToHistoryResponse = jsonRpcResponse(fetcher.suiRpc(), suiToHistoryRequest)
-            val suiToHistoryJsonObject = Gson().fromJson(
-                suiToHistoryResponse.body?.string(), JsonObject::class.java
-            )
-
-            val result: MutableList<JsonObject> = mutableListOf()
-            suiToHistoryJsonObject["result"].asJsonObject["data"].asJsonArray.forEach { data ->
-                result.add(data.asJsonObject)
-            }
-            safeApiCall(Dispatchers.IO) {
-                result
-            }
-
-        } catch (e: Exception) {
-            safeApiCall(Dispatchers.IO) {
-                mutableListOf()
-            }
+            safeApiCall(Dispatchers.IO) { Pair(mutableListOf(), null) }
         }
     }
 

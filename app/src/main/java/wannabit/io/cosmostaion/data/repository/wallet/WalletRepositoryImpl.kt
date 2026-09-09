@@ -20,7 +20,14 @@ import com.cosmwasm.wasm.v1.QueryProto.QuerySmartContractStateResponse
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.protobuf.ByteString
+import com.google.protobuf.FieldMask
 import com.ledger.live.ble.extension.toHexString
+import com.sui.rpc.v2.EpochProto
+import com.sui.rpc.v2.LedgerServiceGrpc
+import com.sui.rpc.v2.LedgerServiceProto
+import com.sui.rpc.v2.ObjectProto
+import com.sui.rpc.v2.StateServiceGrpc
+import com.sui.rpc.v2.StateServiceProto
 import io.grpc.ManagedChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -52,7 +59,9 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.cosmosClass.NEUTRON_VESTING_CONTRACT_ADDRESS
 import wannabit.io.cosmostaion.chain.fetcher.BabylonFetcher
 import wannabit.io.cosmostaion.chain.fetcher.IotaFetcher
+import wannabit.io.cosmostaion.chain.fetcher.PoolInfo
 import wannabit.io.cosmostaion.chain.fetcher.SolanaFetcher
+import wannabit.io.cosmostaion.chain.fetcher.StakeReward
 import wannabit.io.cosmostaion.chain.fetcher.SuiFetcher
 import wannabit.io.cosmostaion.chain.fetcher.accountInfos
 import wannabit.io.cosmostaion.chain.fetcher.accountNumber
@@ -76,9 +85,11 @@ import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
 import wannabit.io.cosmostaion.chain.majorClass.ChainSolana
 import wannabit.io.cosmostaion.chain.majorClass.ChainSui
+import wannabit.io.cosmostaion.chain.majorClass.EXCHANGE_RATE_QUERY
 import wannabit.io.cosmostaion.chain.majorClass.SOLANA_PROGRAM_ID
 import wannabit.io.cosmostaion.chain.testnetClass.ChainBabylonTestnet
 import wannabit.io.cosmostaion.common.formatJsonString
+import wannabit.io.cosmostaion.common.graphQlResponse
 import wannabit.io.cosmostaion.common.jsonRpcResponse
 import wannabit.io.cosmostaion.common.safeApiCall
 import wannabit.io.cosmostaion.data.api.RetrofitInstance.bitApi
@@ -119,7 +130,11 @@ import wannabit.io.cosmostaion.database.AppDatabase
 import wannabit.io.cosmostaion.database.model.Password
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
+import kotlin.math.roundToLong
 
 
 class WalletRepositoryImpl : WalletRepository {
@@ -946,92 +961,149 @@ class WalletRepositoryImpl : WalletRepository {
     }
 
     override suspend fun suiBalance(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<JsonObject?> {
+        channel: ManagedChannel?, chain: ChainSui
+    ): NetworkResult<MutableList<StateServiceProto.Balance>> {
         return try {
-            val suiAllBalanceRequest = JsonRpcRequest(
-                method = "suix_getAllBalances", params = listOf(chain.mainAddress)
-            )
-            val suiAllBalanceResponse = jsonRpcResponse(fetcher.suiRpc(), suiAllBalanceRequest)
-            val suiAllBalanceJsonObject = Gson().fromJson(
-                suiAllBalanceResponse.body?.string(), JsonObject::class.java
-            )
+            val stub = StateServiceGrpc.newBlockingStub(channel)
+                .withDeadlineAfter(duration, TimeUnit.SECONDS)
+            val request =
+                StateServiceProto.ListBalancesRequest.newBuilder().setOwner(chain.mainAddress)
+                    .build()
             safeApiCall(Dispatchers.IO) {
-                suiAllBalanceJsonObject
+                stub.listBalances(request).balancesList
             }
 
         } catch (e: Exception) {
             safeApiCall(Dispatchers.IO) {
-                null
+                mutableListOf()
             }
         }
     }
 
     override suspend fun suiSystemState(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<JsonObject> {
+        channel: ManagedChannel?, chain: ChainSui
+    ): NetworkResult<EpochProto.Epoch> {
         return try {
-            val suiLatestSuiSystemRequest = JsonRpcRequest(
-                method = "suix_getLatestSuiSystemState", params = listOf()
-            )
-            val suiLatestSuiSystemResponse =
-                jsonRpcResponse(fetcher.suiRpc(), suiLatestSuiSystemRequest)
-            val suiLatestSuiSystemJsonObject = Gson().fromJson(
-                suiLatestSuiSystemResponse.body?.string(), JsonObject::class.java
-            )
+            val stub = LedgerServiceGrpc.newBlockingStub(channel)
+                .withDeadlineAfter(duration, TimeUnit.SECONDS)
+            val request = LedgerServiceProto.GetEpochRequest.newBuilder()
+                .setReadMask(
+                    FieldMask.newBuilder().addPaths("system_state").addPaths("epoch").build()
+                ).build()
             safeApiCall(Dispatchers.IO) {
-                suiLatestSuiSystemJsonObject
+                stub.getEpoch(request).epoch
             }
 
         } catch (e: Exception) {
             safeApiCall(Dispatchers.IO) {
-                JsonObject()
+                EpochProto.Epoch.newBuilder().build()
             }
         }
     }
 
     override suspend fun suiOwnedObject(
-        fetcher: SuiFetcher, chain: ChainSui, cursor: String?
+        channel: ManagedChannel?, chain: ChainSui, pageToken: ByteString?
     ) {
-        val params = if (cursor == null) {
-            listOf(
-                chain.mainAddress, mapOf(
-                    "filter" to null, "options" to mapOf(
-                        "showContent" to true, "showDisplay" to true, "showType" to true
-                    )
-                )
-            )
-        } else {
-            listOf(
-                chain.mainAddress, mapOf(
-                    "filter" to null, "options" to mapOf(
-                        "showContent" to true, "showDisplay" to true, "showType" to true
-                    )
-                ), cursor
-            )
-        }
-
         try {
-            val suiOwnedObjectRequest = JsonRpcRequest(
-                method = "suix_getOwnedObjects", params = params
-            )
-            val suiOwnedObjectResponse = jsonRpcResponse(fetcher.suiRpc(), suiOwnedObjectRequest)
-            val suiOwnedObjectJsonObject = Gson().fromJson(
-                suiOwnedObjectResponse.body?.string(), JsonObject::class.java
-            )
-            suiOwnedObjectJsonObject["result"].asJsonObject["data"].asJsonArray.forEach { data ->
-                fetcher.suiObjects.add(data.asJsonObject)
-            }
-            if (suiOwnedObjectJsonObject["result"].asJsonObject["hasNextPage"].asBoolean && suiOwnedObjectJsonObject["result"].asJsonObject["nextCursor"].asString != null) {
-                suiOwnedObject(
-                    fetcher,
-                    chain,
-                    suiOwnedObjectJsonObject["result"].asJsonObject["nextCursor"].asString
-                )
+            val stub =
+                StateServiceGrpc.newBlockingStub(channel)
+                    .withDeadlineAfter(duration, TimeUnit.SECONDS)
+            val request =
+                StateServiceProto.ListOwnedObjectsRequest.newBuilder().setOwner(chain.mainAddress)
+                    .setReadMask(
+                        FieldMask.newBuilder().addPaths("object_type").addPaths("balance")
+                            .addPaths("json").addPaths("display").build()
+                    )
+            pageToken?.let { request.setPageToken(pageToken) }
+
+            val response = stub.listOwnedObjects(request.build())
+            chain.suiFetcher()?.suiObjects?.addAll(response.objectsList)
+
+            if (response.nextPageToken.size() > 0) {
+                suiOwnedObject(channel, chain, response.nextPageToken)
             }
 
         } catch (e: Exception) {
 
+        }
+    }
+
+    override suspend fun suiExchangeRateAt(
+        chain: ChainSui,
+        tableId: String,
+        epoch: Long
+    ): JsonObject? {
+        val bytes = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(epoch).array()
+        val epochToBcsBase64 = Base64.toBase64String(bytes)
+        return try {
+            val response = graphQlResponse(
+                chain.mainUrl,
+                EXCHANGE_RATE_QUERY,
+                mapOf("tableId" to tableId, "epochKey" to epochToBcsBase64)
+            )
+
+            val json = Gson().fromJson(response.body?.string(), JsonObject::class.java)
+            return json["data"]?.asJsonObject
+                ?.get("address")?.asJsonObject
+                ?.get("dynamicField")?.asJsonObject
+                ?.get("value")?.asJsonObject
+                ?.get("json")?.asJsonObject
+
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun suiStakeRewards(
+        fetcher: SuiFetcher, chain: ChainSui, stakedObjects: List<ObjectProto.Object>, poolMap: Map<String, PoolInfo>, currentEpoch: Long
+    ): List<StakeReward> {
+        val rateAmount = mutableMapOf<Pair<String, Long>, Pair<Long, Long>?>()
+
+        suspend fun rateAt(tableId: String, epoch: Long): Pair<Long, Long>? {
+            return rateAmount.getOrPut(tableId to epoch) {
+                suiExchangeRateAt(chain, tableId, epoch)?.let {
+                    Pair(it["sui_amount"].asLong, it["pool_token_amount"].asLong)
+                }
+            }
+        }
+
+        return stakedObjects.mapNotNull { obj ->
+            val json = obj.json.structValue
+            val poolId = json.fieldsMap["pool_id"]?.stringValue ?: return@mapNotNull null
+            val activationEpoch = json.fieldsMap["stake_activation_epoch"]?.stringValue?.toLong()
+                ?: return@mapNotNull null
+            val principal = json.fieldsMap["principal"]?.stringValue?.toLong() ?: 0L
+
+            val poolInfo = poolMap[poolId] ?: return@mapNotNull null
+
+            if (currentEpoch < activationEpoch) {
+                StakeReward(
+                    obj.objectId,
+                    poolId,
+                    poolInfo.validatorAddress,
+                    principal,
+                    activationEpoch,
+                    true,
+                    0
+                )
+            } else {
+                val currentRatePair = rateAt(poolInfo.exchangeRatesTableId, currentEpoch)
+                val stakeRatePair = rateAt(poolInfo.exchangeRatesTableId, activationEpoch)
+
+                val currentRate = currentRatePair?.let { fetcher.rate(it.first, it.second) } ?: 1.0
+                val stakeRate = stakeRatePair?.let { fetcher.rate(it.first, it.second) } ?: 1.0
+
+                val reward = ((stakeRate / currentRate) - 1.0) * principal
+                StakeReward(
+                    obj.objectId,
+                    poolId,
+                    poolInfo.validatorAddress,
+                    principal,
+                    activationEpoch,
+                    false,
+                    max(0, reward.roundToLong())
+                )
+            }
         }
     }
 
@@ -1058,22 +1130,22 @@ class WalletRepositoryImpl : WalletRepository {
     }
 
     override suspend fun suiCoinMetadata(
-        fetcher: SuiFetcher, chain: ChainSui, coinType: String?
-    ): NetworkResult<JsonObject> {
+        channel: ManagedChannel?, chain: ChainSui, coinType: String?
+    ): NetworkResult<StateServiceProto.CoinMetadata?> {
         return try {
-            val suiCoinMetadataRequest = JsonRpcRequest(
-                method = "suix_getCoinMetadata", params = listOf(coinType)
-            )
-            val suiCoinMetadataResponse = jsonRpcResponse(fetcher.suiRpc(), suiCoinMetadataRequest)
-            val suiCoinMetadataJsonObject = Gson().fromJson(
-                suiCoinMetadataResponse.body?.string(), JsonObject::class.java
-            )
-            return safeApiCall(Dispatchers.IO) {
-                suiCoinMetadataJsonObject
+            val stub =
+                StateServiceGrpc.newBlockingStub(channel)
+                    .withDeadlineAfter(duration, TimeUnit.SECONDS)
+            val request =
+                StateServiceProto.GetCoinInfoRequest.newBuilder().setCoinType(coinType).build()
+
+            safeApiCall(Dispatchers.IO) {
+                stub.getCoinInfo(request).metadata
             }
+
         } catch (e: Exception) {
             safeApiCall(Dispatchers.IO) {
-                JsonObject()
+                null
             }
         }
     }
@@ -1356,7 +1428,8 @@ class WalletRepositoryImpl : WalletRepository {
 
                     } else {
                         btcRewards.add(
-                            CoinProto.Coin.newBuilder().setDenom(chain.getMainAssetDenom()).setAmount("0")
+                            CoinProto.Coin.newBuilder().setDenom(chain.getMainAssetDenom())
+                                .setAmount("0")
                                 .build()
                         )
                     }

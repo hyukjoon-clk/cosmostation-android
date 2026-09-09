@@ -3,6 +3,13 @@ package wannabit.io.cosmostaion.chain.fetcher
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.google.protobuf.Value
+import com.sui.rpc.v2.EpochProto
+import com.sui.rpc.v2.ObjectProto
+import com.sui.rpc.v2.StateServiceProto
+import com.sui.rpc.v2.SystemStateProto
+import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.majorClass.SUI_FEE_DEFAULT
 import wannabit.io.cosmostaion.chain.majorClass.SUI_FEE_SEND
@@ -22,14 +29,14 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 class SuiFetcher(private val chain: BaseChain) {
 
-    var suiSystem = JsonObject()
+    var suiSystem: EpochProto.Epoch? = null
     var suiBalances: MutableList<Pair<String?, BigDecimal?>> = mutableListOf()
-    var suiStakedList: MutableList<JsonObject> = mutableListOf()
-    var suiObjects: MutableList<JsonObject> = mutableListOf()
-    var suiValidators: MutableList<JsonObject> = mutableListOf()
-    var suiApys: MutableList<JsonObject> = mutableListOf()
-    val suiCoinMeta: MutableMap<String, JsonObject> = mutableMapOf()
+    val suiObjects: MutableList<ObjectProto.Object> = mutableListOf()
+    var suiStakedList: MutableList<StakeReward> = mutableListOf()
+    var suiValidators: MutableList<SystemStateProto.Validator> = mutableListOf()
+    val suiCoinMeta: MutableMap<String, StateServiceProto.CoinMetadata> = mutableMapOf()
     val suiHistory: MutableList<JsonObject> = mutableListOf()
+    var suiApys: MutableList<JsonObject> = mutableListOf()
 
     fun allAssetValue(isUsd: Boolean? = false): BigDecimal {
         return suiBalanceValueSum(isUsd).add(suiStakedValue(isUsd))
@@ -89,13 +96,8 @@ class SuiFetcher(private val chain: BaseChain) {
         var staked = BigDecimal.ZERO
         var earned = BigDecimal.ZERO
         suiStakedList.forEach { suiStaked ->
-            suiStaked["stakes"].asJsonArray.forEach { stakes ->
-                staked = staked.add(stakes.asJsonObject["principal"].asLong.toBigDecimal())
-                earned = earned.add(
-                    stakes.asJsonObject.get("estimatedReward")?.asLong?.toBigDecimal()
-                        ?: BigDecimal.ZERO
-                )
-            }
+            staked = staked.add(suiStaked.principal.toBigDecimal())
+            earned = earned.add(suiStaked.estimatedReward.toBigDecimal())
         }
         return staked.add(earned)
     }
@@ -114,32 +116,20 @@ class SuiFetcher(private val chain: BaseChain) {
     }
 
     fun principalAmount(): BigDecimal {
-        var staked = BigDecimal.ZERO
-        suiStakedList.forEach { suiStaked ->
-            suiStaked["stakes"].asJsonArray.forEach { stakes ->
-                staked = staked.add(stakes.asJsonObject["principal"].asLong.toBigDecimal())
-            }
-        }
-        return staked
+        return suiStakedList.sumOf { it.principal }.toBigDecimal()
     }
 
     fun estimateRewardAmount(): BigDecimal {
-        var earned = BigDecimal.ZERO
-        suiStakedList.forEach { suiStaked ->
-            suiStaked["stakes"].asJsonArray.forEach { stakes ->
-                if (stakes.asJsonObject["estimatedReward"] != null) {
-                    earned =
-                        earned.add(stakes.asJsonObject["estimatedReward"].asLong.toBigDecimal())
-                }
-            }
-        }
-        return earned
+        return suiStakedList.sumOf { it.estimatedReward }.toBigDecimal()
     }
 
-    fun suiAllNfts(): MutableList<JsonObject> {
+    fun suiAllNfts(): MutableList<ObjectProto.Object> {
         return suiObjects.filter { suiObject ->
-            val types = suiObject["data"].asJsonObject["type"].asString.lowercase()
+            val types = suiObject.objectType.lowercase()
             (!types.contains("stakedsui") && !types.contains("coin"))
+
+//            val types = suiObject["data"].asJsonObject["type"].asString.lowercase()
+//            (!types.contains("stakedsui") && !types.contains("coin"))
         }.toMutableList()
     }
 
@@ -161,6 +151,34 @@ class SuiFetcher(private val chain: BaseChain) {
         }
     }
 
+    fun getSuiGrpc(): Pair<String, Int> {
+        val endPoint = Prefs.getGrpcEndpoint(chain)
+        return if (endPoint.isNotEmpty() && endPoint.split(":").count() == 2) {
+            val host = endPoint.split(":")[0].trim()
+            val port = endPoint.split(":").getOrNull(1)?.trim()?.toIntOrNull() ?: 443
+            Pair(host, port)
+
+        } else {
+            if (chain.grpcHost.split(":").count() == 2) {
+                val host = chain.grpcHost.split(":")[0].trim()
+                val port = chain.grpcHost.split(":").getOrNull(1)?.trim()?.toIntOrNull() ?: 443
+                Pair(host, port)
+            } else {
+                Pair(chain.grpcHost, chain.grpcPort)
+            }
+        }
+    }
+
+    fun getChannel(): ManagedChannel? {
+        return if (getSuiGrpc().first.isEmpty()) {
+            null
+        } else {
+            ManagedChannelBuilder.forAddress(
+                getSuiGrpc().first, getSuiGrpc().second
+            ).useTransportSecurity().build()
+        }
+    }
+
     fun suiRpc(): String {
         val endpoint = Prefs.getEvmRpcEndpoint(chain)
         return if (endpoint?.isNotEmpty() == true) {
@@ -169,6 +187,18 @@ class SuiFetcher(private val chain: BaseChain) {
             chain.mainUrl
         }
     }
+
+    fun buildPoolMap(systemState: SystemStateProto.SystemState): Map<String, PoolInfo> {
+        return systemState.validators.activeValidatorsList.associate { activeValidator ->
+            activeValidator.stakingPool.id to PoolInfo(
+                activeValidator.address,
+                activeValidator.stakingPool.exchangeRates.id
+            )
+        }
+    }
+
+    fun rate(suiAmount: Long, poolTokenAmount: Long): Double =
+        if (suiAmount == 0L) 1.0 else poolTokenAmount.toDouble() / suiAmount.toDouble()
 
     private fun referenceGasPrice(): String {
         val suixReferenceGasPriceRequest =
@@ -261,16 +291,32 @@ class SuiFetcher(private val chain: BaseChain) {
     }
 }
 
+data class PoolInfo(val validatorAddress: String, val exchangeRatesTableId: String)
+data class StakeReward(
+    val objectId: String,
+    val poolId: String,
+    val validatorAddress: String,
+    val principal: Long,
+    val activationEpoch: Long,
+    val isPending: Boolean,
+    val estimatedReward: Long
+)
+
+fun String.suiNormalizeType(): String {
+    return Regex("0x0*([0-9a-fA-F]+)(?=::)").replace(this) { "0x${it.groupValues[1]}" }
+}
+
 fun String.suiIsCoinType(): Boolean {
-    return this.startsWith(SUI_TYPE_COIN)
+    return this.suiNormalizeType().startsWith(SUI_TYPE_COIN)
 }
 
 fun String?.suiCoinType(): String? {
-    if (this?.suiIsCoinType() == false) {
+    val normalized = this?.suiNormalizeType()
+    if (normalized?.suiIsCoinType() == false) {
         return null
     }
     val regex = Regex("<(.+)>")
-    this?.let {
+    normalized?.let {
         val matchResult = regex.find(it)
         return matchResult?.groups?.get(1)?.value
     }
@@ -293,6 +339,8 @@ fun JsonObject?.assetImg(): String {
         ""
     }
 }
+
+fun Value.getStringField(key: String): String? = structValue.fieldsMap[key]?.stringValue
 
 fun JsonObject.moveRawNftUrlString(): String? {
     return try {

@@ -6,6 +6,7 @@ import android.graphics.PorterDuff
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
@@ -151,7 +152,11 @@ class HistoryViewHolder(
         binding.apply {
             historyView.setBackgroundResource(R.drawable.item_bg)
             headerLayout.visibleOrGone(headerIndex == position)
-            val headerDate = dpTimeToYear(historySuiGroup.second["timestampMs"].asString.toLong())
+
+            val timestampMs =
+                java.time.Instant.parse(historySuiGroup.second["effects"].asJsonObject["timestamp"].asString)
+                    .toEpochMilli()
+            val headerDate = dpTimeToYear(timestampMs)
             val currentDate = formatCurrentTimeToYear()
             if (headerDate == currentDate) {
                 headerTitle.text = context.getString(R.string.str_today)
@@ -160,7 +165,7 @@ class HistoryViewHolder(
             }
             headerCnt.text = "($cnt)"
 
-            if (historySuiGroup.second["effects"].asJsonObject["status"].asJsonObject["status"].asString == "success") {
+            if (historySuiGroup.second["effects"].asJsonObject["status"].asString == "SUCCESS") {
                 txSuccessImg.setImageResource(R.drawable.icon_history_success)
             } else {
                 txSuccessImg.setImageResource(R.drawable.icon_history_fail)
@@ -169,9 +174,9 @@ class HistoryViewHolder(
             var title = ""
             var description = ""
             val txs =
-                historySuiGroup.second["transaction"].asJsonObject["data"].asJsonObject["transaction"].asJsonObject["transactions"].asJsonArray
-            val sender =
-                historySuiGroup.second["transaction"].asJsonObject["data"].asJsonObject["sender"].asString
+                historySuiGroup.second["kind"].asJsonObject["commands"]?.asJsonObject?.get("nodes")?.asJsonArray
+                    ?: JsonArray()
+            val sender = historySuiGroup.second["sender"].asJsonObject["address"].asString
             title = if (sender == chain.mainAddress) {
                 context.getString(R.string.tx_send)
             } else {
@@ -179,28 +184,25 @@ class HistoryViewHolder(
             }
 
             if (txs.size() > 0) {
-                description = txs.last().asJsonObject.entrySet().first().key ?: ""
-                description = if (txs.size() > 1) {
-                    description + " + " + txs.size()
-                } else {
-                    description
-                }
+                description = txs.last().asJsonObject["__typename"].asString
+                description = if (txs.size() > 1) "$description + ${txs.size()}" else description
 
                 txs.forEach { tx ->
-                    if (tx.asJsonObject["MoveCall"] != null) {
-                        val txType = tx.asJsonObject["MoveCall"].asJsonObject["function"].asString
-                        if (txType.contains("request_withdraw_stake")) {
-                            title = context.getString(R.string.str_unstake)
-                        } else if (txType.contains("request_add_stake")) {
-                            title = context.getString(R.string.str_stake)
-                        } else if (txType.contains("swap")) {
-                            title = context.getString(R.string.title_swap)
-                        } else if (txType.contains("mint")) {
-                            title = "Supply"
-                        } else if (txType.contains("redeem")) {
-                            title = "Redeem"
-                        } else if (txType.contains("unwrap")) {
-                            title = "unwrap"
+                    if (tx.asJsonObject["__typename"].asString == "MoveCallCommand") {
+                        val txType = tx.asJsonObject["function"].asJsonObject["name"].asString
+                        when {
+                            txType.contains("request_withdraw_stake") -> title =
+                                context.getString(R.string.str_unstake)
+
+                            txType.contains("request_add_stake") -> title =
+                                context.getString(R.string.str_stake)
+
+                            txType.contains("swap") -> title =
+                                context.getString(R.string.title_swap)
+
+                            txType.contains("mint") -> title = "Supply"
+                            txType.contains("redeem") -> title = "Redeem"
+                            txType.contains("unwrap") -> title = "unwrap"
                         }
                     }
                 }
@@ -210,22 +212,30 @@ class HistoryViewHolder(
                 txAmount.text = ""
             }
 
-            txMessage.text = title.ifEmpty {
-                description
-            }
+            txMessage.text = title.ifEmpty { description }
             txHash.text = historySuiGroup.second["digest"].asString
-            txTime.text = dpTimeToMonth(historySuiGroup.second["timestampMs"].asString.toLong())
-            txHeight.text = "(" + historySuiGroup.second["checkpoint"].asString + ")"
+            txTime.text = dpTimeToMonth(
+                java.time.Instant.parse(historySuiGroup.second["effects"].asJsonObject["timestamp"].asString)
+                    .toEpochMilli()
+            )
+            txHeight.text =
+                "(" + historySuiGroup.second["effects"].asJsonObject["checkpoint"].asJsonObject["sequenceNumber"].asLong + ")"
+
+            val balanceChanges =
+                historySuiGroup.second["effects"].asJsonObject["balanceChanges"]?.asJsonObject?.get(
+                    "nodes"
+                )?.asJsonArray
 
             when (title) {
                 context.getString(R.string.tx_send), context.getString(R.string.tx_receive) -> {
-                    historySuiGroup.second["balanceChanges"]?.let { balanceChanges ->
+                    balanceChanges?.let { changes ->
                         if (title == context.getString(R.string.tx_send)) {
-                            balanceChanges.asJsonArray.firstOrNull { it.asJsonObject["owner"].asJsonObject["AddressOwner"].asString != chain.mainAddress }
+                            changes.firstOrNull { it.asJsonObject["owner"].asJsonObject["address"].asString != chain.mainAddress }
                         } else {
-                            balanceChanges.asJsonArray.firstOrNull { it.asJsonObject["owner"].asJsonObject["AddressOwner"].asString == chain.mainAddress }
+                            changes.firstOrNull { it.asJsonObject["owner"].asJsonObject["address"].asString == chain.mainAddress }
                         }?.let { change ->
-                            val symbol = change.asJsonObject["coinType"].asString
+                            val symbol =
+                                change.asJsonObject["coinType"].asJsonObject["repr"].asString
                             val amount = change.asJsonObject["amount"].asString
                             val intAmount = abs(amount.toLong())
 
@@ -240,69 +250,53 @@ class HistoryViewHolder(
                                     txAmount.text =
                                         formatAmount(dpAmount.toString(), asset.decimals ?: 9)
                                     txDenom.text = asset.symbol
-
                                 } else if (metaData != null) {
-                                    txDenom.text = metaData["symbol"].asString
-                                    val dpAmount = intAmount.toBigDecimal()
-                                        .movePointLeft(metaData["decimals"].asInt)
-                                        ?.setScale(18, RoundingMode.DOWN)
+                                    txDenom.text = metaData.symbol
+                                    val dpAmount =
+                                        intAmount.toBigDecimal().movePointLeft(metaData.decimals)
+                                            .setScale(18, RoundingMode.DOWN)
                                     txAmount.text = formatAmount(dpAmount.toString(), 9)
-
                                 } else {
                                     txDenom.text = symbol.suiCoinSymbol()
                                     val dpAmount = intAmount.toBigDecimal().movePointLeft(9)
-                                        ?.setScale(18, RoundingMode.DOWN)
+                                        .setScale(18, RoundingMode.DOWN)
                                     txAmount.text = formatAmount(dpAmount.toString(), 9)
                                 }
                             }
-                        } ?: run {
-                            txDenom.text = "-"
-                            txAmount.text = ""
-                        }
-
-                    } ?: run {
-                        txDenom.text = "-"
-                        txAmount.text = ""
-                    }
+                        } ?: run { txDenom.text = "-"; txAmount.text = "" }
+                    } ?: run { txDenom.text = "-"; txAmount.text = "" }
                 }
 
-                context.getString(
-                    R.string.str_stake
-                ) -> {
-                    historySuiGroup.second["transaction"].asJsonObject["data"].asJsonObject["transaction"].asJsonObject["inputs"].asJsonArray?.let { inputs ->
+                context.getString(R.string.str_stake) -> {
+                    historySuiGroup.second["kind"].asJsonObject["inputs"]?.asJsonObject?.get("nodes")?.asJsonArray?.let { inputs ->
                         inputs.forEach { input ->
-                            if (input.asJsonObject["type"].asString == "pure" && input.asJsonObject["valueType"].asString == "u64") {
+                            val inputObj = input.asJsonObject
+                            if (inputObj["__typename"]?.asString == "MoveValue" &&
+                                inputObj["type"]?.asJsonObject?.get("repr")?.asString == "u64"
+                            ) {
                                 BaseData.getAsset(chain.apiName, SUI_MAIN_DENOM)?.let { asset ->
-                                    val dpAmount =
-                                        input.asJsonObject["value"].asString.toBigDecimal()
-                                            .movePointLeft(asset.decimals ?: 9)
-                                            .setScale(asset.decimals ?: 9, RoundingMode.DOWN)
+                                    val dpAmount = inputObj["json"].asString.toBigDecimal()
+                                        .movePointLeft(asset.decimals ?: 9)
+                                        .setScale(asset.decimals ?: 9, RoundingMode.DOWN)
                                     txAmount.text =
                                         formatAmount(dpAmount.toString(), asset.decimals ?: 9)
                                     txDenom.text = asset.symbol
-
-                                } ?: run {
-                                    txDenom.text = "-"
-                                    txAmount.text = ""
-                                }
+                                } ?: run { txDenom.text = "-"; txAmount.text = "" }
                             }
                         }
-
-                    } ?: run {
-                        txDenom.text = "-"
-                        txAmount.text = ""
-                    }
+                    } ?: run { txDenom.text = "-"; txAmount.text = "" }
                 }
 
                 context.getString(R.string.str_unstake) -> {
-                    historySuiGroup.second["effects"].asJsonObject["gasUsed"].asJsonObject?.let { gasUsed ->
-                        val computationCost = gasUsed["computationCost"].asString.toBigDecimal()
-                        val storageCost = gasUsed["storageCost"].asString.toBigDecimal()
-                        val storageRebate = gasUsed["storageRebate"].asString.toBigDecimal()
-                        val gasFee = computationCost.add(storageCost).subtract(storageRebate)
+                    historySuiGroup.second["effects"].asJsonObject["gasEffects"]?.asJsonObject?.get(
+                        "gasSummary"
+                    )?.asJsonObject?.let { gasSummary ->
+                        val gasFee = gasSummary["computationCost"].asLong.toBigDecimal()
+                            .add(gasSummary["storageCost"].asLong.toBigDecimal())
+                            .subtract(gasSummary["storageRebate"].asLong.toBigDecimal())
 
                         BaseData.getAsset(chain.apiName, SUI_MAIN_DENOM)?.let { asset ->
-                            historySuiGroup.second["balanceChanges"].asJsonArray.firstOrNull { it.asJsonObject["coinType"].asString == SUI_MAIN_DENOM }
+                            balanceChanges?.firstOrNull { it.asJsonObject["coinType"].asJsonObject["repr"].asString == SUI_MAIN_DENOM }
                                 ?.let { balance ->
                                     val amount =
                                         balance.asJsonObject["amount"].asString.toBigDecimal()
@@ -312,26 +306,13 @@ class HistoryViewHolder(
                                     txAmount.text =
                                         formatAmount(dpAmount.toString(), asset.decimals ?: 9)
                                     txDenom.text = asset.symbol
-
-                                } ?: run {
-                                txDenom.text = "-"
-                                txAmount.text = ""
-                            }
-
-                        } ?: run {
-                            txDenom.text = "-"
-                            txAmount.text = ""
-                        }
-
-                    } ?: run {
-                        txDenom.text = "-"
-                        txAmount.text = ""
-                    }
+                                } ?: run { txDenom.text = "-"; txAmount.text = "" }
+                        } ?: run { txDenom.text = "-"; txAmount.text = "" }
+                    } ?: run { txDenom.text = "-"; txAmount.text = "" }
                 }
 
                 else -> {
-                    txDenom.text = "-"
-                    txAmount.text = ""
+                    txDenom.text = "-"; txAmount.text = ""
                 }
             }
         }

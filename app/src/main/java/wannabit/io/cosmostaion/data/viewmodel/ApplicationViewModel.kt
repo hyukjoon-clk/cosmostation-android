@@ -31,6 +31,7 @@ import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.chain.fetcher.FinalityProvider
 import wannabit.io.cosmostaion.chain.fetcher.iotaCoinType
 import wannabit.io.cosmostaion.chain.fetcher.suiCoinType
+import wannabit.io.cosmostaion.chain.fetcher.suiNormalizeType
 import wannabit.io.cosmostaion.chain.majorClass.APTOS_MAIN_DENOM
 import wannabit.io.cosmostaion.chain.majorClass.ChainAptos
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
@@ -40,6 +41,7 @@ import wannabit.io.cosmostaion.chain.majorClass.ChainSolana
 import wannabit.io.cosmostaion.chain.majorClass.ChainSui
 import wannabit.io.cosmostaion.chain.majorClass.IOTA_MAIN_DENOM
 import wannabit.io.cosmostaion.chain.majorClass.SUI_MAIN_DENOM
+import wannabit.io.cosmostaion.chain.majorClass.SUI_STAKED_TYPE
 import wannabit.io.cosmostaion.chain.testnetClass.ChainGnoTestnet
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.formatJsonString
@@ -540,8 +542,10 @@ class ApplicationViewModel(
                             ) != null
                         ) {
                             if (chain is ChainCheqd) {
-                                val baseFeeAmount = baseFee.amount.toBigDecimal().movePointRight(4).toString()
-                                val tempBaseFee = DecCoin.newBuilder().setDenom(baseFee.denom).setAmount(baseFeeAmount).build()
+                                val baseFeeAmount =
+                                    baseFee.amount.toBigDecimal().movePointRight(4).toString()
+                                val tempBaseFee = DecCoin.newBuilder().setDenom(baseFee.denom)
+                                    .setAmount(baseFeeAmount).build()
                                 cosmosFetcher?.cosmosBaseFees?.add(tempBaseFee)
                             } else {
                                 cosmosFetcher?.cosmosBaseFees?.add(baseFee)
@@ -1008,14 +1012,15 @@ class ApplicationViewModel(
 
     fun loadSuiData(
         id: Long,
-        chain: BaseChain,
+        chain: ChainSui,
         isEdit: Boolean? = false,
         isTx: Boolean? = false,
         isRefresh: Boolean? = false
     ) = CoroutineScope(Dispatchers.IO).launch {
-        (chain as ChainSui).suiFetcher()?.let { fetcher ->
-            chain.apply {
-                fetcher.suiSystem = JsonObject()
+        chain.apply {
+            suiFetcher()?.let { fetcher ->
+                fetcher.suiObjects.clear()
+                fetcher.suiSystem = null
                 fetcher.suiBalances.clear()
                 fetcher.suiStakedList.clear()
                 fetcher.suiObjects.clear()
@@ -1023,75 +1028,60 @@ class ApplicationViewModel(
                 fetcher.suiApys.clear()
                 fetcher.suiCoinMeta.clear()
 
+                val channel = chain.suiFetcher()?.getChannel()
                 try {
                     val loadSystemStateDeferred =
-                        async { walletRepository.suiSystemState(fetcher, this@apply) }
+                        async { walletRepository.suiSystemState(channel, chain) }
                     val loadOwnedObjectDeferred =
-                        async { walletRepository.suiOwnedObject(fetcher, this@apply, null) }
-                    val loadStakesDeferred =
-                        async { walletRepository.suiStakes(fetcher, this@apply) }
-                    val loadApysDeferred = async { walletRepository.suiApys(fetcher, this@apply) }
+                        async { walletRepository.suiOwnedObject(channel, chain, null) }
 
                     val systemStateResult = loadSystemStateDeferred.await()
                     loadOwnedObjectDeferred.await()
-                    val stakesResult = loadStakesDeferred.await()
-                    val apysResult = loadApysDeferred.await()
 
                     if (systemStateResult is NetworkResult.Success) {
                         fetcher.suiSystem = systemStateResult.data
-                        fetcher.suiSystem["result"].asJsonObject["activeValidators"].asJsonArray.forEach { validator ->
-                            fetcher.suiValidators.add(validator.asJsonObject)
+                        fetcher.suiSystem?.systemState?.validators?.activeValidatorsList?.forEach { validator ->
+                            fetcher.suiValidators.add(validator)
                         }
                         fetcher.suiValidators.sortWith { o1, o2 ->
                             when {
-                                o1["name"].asString == "Cosmostation" -> -1
-                                o2["name"].asString == "Cosmostation" -> 1
-                                else -> o2["votingPower"]?.asInt?.compareTo(
-                                    o1["votingPower"]?.asInt ?: 0
-                                ) ?: 0
+                                o1.name == "Cosmostation" -> -1
+                                o2.name == "Cosmostation" -> -1
+                                else -> o2.votingPower.compareTo(o1.votingPower)
                             }
-                        }
-                    }
-
-                    if (apysResult is NetworkResult.Success) {
-                        fetcher.suiApys = apysResult.data
-                        fetcher.suiApys.sortByDescending {
-                            it["apy"]?.asDouble ?: Double.MIN_VALUE
                         }
                     }
 
                     fetcher.suiObjects.forEach { suiObject ->
-                        val coinType = suiObject["data"].asJsonObject["type"].asString.suiCoinType()
-                        if (coinType != null) {
-                            val fields =
-                                suiObject["data"].asJsonObject["content"].asJsonObject["fields"].asJsonObject
-                            fields?.get("balance")?.let { balance ->
-                                val index =
-                                    fetcher.suiBalances.indexOfFirst { it.first == coinType }
-                                if (index != -1) {
-                                    val alreadyAmount = fetcher.suiBalances[index].second
-                                    val sumAmount =
-                                        alreadyAmount?.add(balance.asString.toBigDecimal())
-                                    fetcher.suiBalances[index] = Pair(coinType, sumAmount)
+                        val coinType = suiObject.objectType.suiCoinType()
+                        if (coinType != null && suiObject.hasBalance()) {
+                            val balance = suiObject.balance.toBigDecimal()
 
-                                } else {
-                                    val newAmount = balance.asString.toBigDecimal()
-                                    fetcher.suiBalances.add(Pair(coinType, newAmount))
-                                }
+                            val index = fetcher.suiBalances.indexOfFirst { it.first == coinType }
+                            if (index != -1) {
+                                val alreadyAmount = fetcher.suiBalances[index].second
+                                val sumAmount = alreadyAmount?.add(balance)
+                                fetcher.suiBalances[index] = Pair(coinType, sumAmount)
+                            } else {
+                                fetcher.suiBalances.add(Pair(coinType, balance))
                             }
                         }
                     }
 
-                    if (stakesResult is NetworkResult.Success) {
-                        stakesResult.data["result"].asJsonArray.forEach { stake ->
-                            fetcher.suiStakedList.add(stake.asJsonObject)
-                        }
+                    val poolMap = fetcher.suiSystem?.systemState?.let { fetcher.buildPoolMap(it) }
+                        ?: emptyMap()
+                    val stakedObjects = fetcher.suiObjects.filter {
+                        it.objectType.suiNormalizeType().startsWith(SUI_STAKED_TYPE)
                     }
+                    val currentEpoch = fetcher.suiSystem?.epoch ?: 0L
+                    fetcher.suiStakedList = walletRepository.suiStakeRewards(
+                        fetcher, chain, stakedObjects, poolMap, currentEpoch
+                    ).toMutableList()
 
                     withContext(Dispatchers.Default) {
                         val coinMetaDeferred = fetcher.suiBalances.map { (coinType, _) ->
                             async {
-                                walletRepository.suiCoinMetadata(fetcher, this@apply, coinType)
+                                walletRepository.suiCoinMetadata(channel, chain, coinType)
                             }
                         }
 
@@ -1099,18 +1089,8 @@ class ApplicationViewModel(
                             val coinMetadataResult = deferred.await()
                             if (coinMetadataResult is NetworkResult.Success && fetcher.suiBalances.isNotEmpty()) {
                                 fetcher.suiBalances[index].first?.let { type ->
-                                    val result = coinMetadataResult.data["result"]
-                                    val resultData = when (result) {
-                                        is JsonObject -> {
-                                            result.asJsonObject
-                                        }
-
-                                        else -> {
-                                            null
-                                        }
-                                    }
-                                    if (resultData != null) {
-                                        fetcher.suiCoinMeta[type] = resultData
+                                    coinMetadataResult.data?.let { metadata ->
+                                        fetcher.suiCoinMeta[type] = metadata
                                     }
                                 }
                             }

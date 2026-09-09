@@ -7,13 +7,19 @@ import com.cosmos.distribution.v1beta1.DistributionProto
 import com.cosmos.staking.v1beta1.StakingProto
 import com.cosmwasm.wasm.v1.QueryProto.QuerySmartContractStateResponse
 import com.google.gson.JsonObject
+import com.google.protobuf.ByteString
+import com.sui.rpc.v2.EpochProto
+import com.sui.rpc.v2.ObjectProto
+import com.sui.rpc.v2.StateServiceProto
 import io.grpc.ManagedChannel
 import retrofit2.Response
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.fetcher.BabylonFetcher
 import wannabit.io.cosmostaion.chain.fetcher.IotaFetcher
+import wannabit.io.cosmostaion.chain.fetcher.PoolInfo
 import wannabit.io.cosmostaion.chain.fetcher.SolanaFetcher
+import wannabit.io.cosmostaion.chain.fetcher.StakeReward
 import wannabit.io.cosmostaion.chain.fetcher.SuiFetcher
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
@@ -189,24 +195,30 @@ interface WalletRepository {
 
     // Sui
     suspend fun suiBalance(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<JsonObject?>
+        channel: ManagedChannel?, chain: ChainSui
+    ): NetworkResult<MutableList<StateServiceProto.Balance>>
 
     suspend fun suiSystemState(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<JsonObject>
+        channel: ManagedChannel?, chain: ChainSui
+    ): NetworkResult<EpochProto.Epoch>
 
     suspend fun suiOwnedObject(
-        fetcher: SuiFetcher, chain: ChainSui, cursor: String?
+        channel: ManagedChannel?, chain: ChainSui, pageToken: ByteString?
     )
+
+    suspend fun suiExchangeRateAt(chain: ChainSui, tableId: String, epoch: Long): JsonObject?
+
+    suspend fun suiStakeRewards(
+        fetcher: SuiFetcher, chain: ChainSui, stakedObjects: List<ObjectProto.Object>, poolMap: Map<String, PoolInfo>, currentEpoch: Long
+    ): List<StakeReward>
 
     suspend fun suiStakes(
         fetcher: SuiFetcher, chain: ChainSui
     ): NetworkResult<JsonObject>
 
     suspend fun suiCoinMetadata(
-        fetcher: SuiFetcher, chain: ChainSui, coinType: String?
-    ): NetworkResult<JsonObject>
+        channel: ManagedChannel?, chain: ChainSui, coinType: String?
+    ): NetworkResult<StateServiceProto.CoinMetadata?>
 
     suspend fun suiApys(
         fetcher: SuiFetcher, chain: ChainSui
@@ -295,7 +307,13 @@ interface WalletRepository {
     ): NetworkResult<JsonObject>
 
     //Solana
-    suspend fun solanaAccountInfo(fetcher: SolanaFetcher, chain: ChainSolana): NetworkResult<JsonObject>
+    suspend fun solanaAccountInfo(
+        fetcher: SolanaFetcher,
+        chain: ChainSolana
+    ): NetworkResult<JsonObject>
 
-    suspend fun solanaTokenInfo(fetcher: SolanaFetcher, chain: ChainSolana): NetworkResult<JsonObject>
+    suspend fun solanaTokenInfo(
+        fetcher: SolanaFetcher,
+        chain: ChainSolana
+    ): NetworkResult<JsonObject>
 }

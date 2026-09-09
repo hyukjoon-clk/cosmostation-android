@@ -87,44 +87,28 @@ class HistoryViewModel(private val historyRepository: HistoryRepository) : ViewM
             fetcher.suiHistory.clear()
 
             try {
-                val loadFromHistoryDeferred =
-                    async { historyRepository.suiFromHistory(fetcher, chain.mainAddress) }
-                val loadToHistoryDeferred =
-                    async { historyRepository.suiToHistory(fetcher, chain.mainAddress) }
-
-                val fromHistoryResult = loadFromHistoryDeferred.await()
-                val toHistoryResult = loadToHistoryDeferred.await()
-
-                if (fromHistoryResult is NetworkResult.Success && toHistoryResult is NetworkResult.Success) {
-                    val result: MutableList<Pair<String, JsonObject>> = mutableListOf()
-                    fetcher.suiHistory.addAll(fromHistoryResult.data ?: mutableListOf())
-                    toHistoryResult.data?.forEach { to ->
-                        val existingItem =
-                            fetcher.suiHistory.firstOrNull { it["digest"].asString == to["digest"].asString }
-                        if (existingItem == null) {
-                            fetcher.suiHistory.add(to)
-                        }
-                    }
+                val historyResult = historyRepository.suiHistory(chain, chain.mainAddress, null)
+                if (historyResult is NetworkResult.Success) {
+                    fetcher.suiHistory.addAll(historyResult.data.first)
                     fetcher.suiHistory.sortByDescending {
-                        it["checkpoint"].asString.toLongOrNull() ?: 0L
+                        it["effects"]?.asJsonObject?.get("checkpoint")?.asJsonObject
+                            ?.get("sequenceNumber")?.asLong ?: 0L
                     }
+                    val result: MutableList<Pair<String, JsonObject>> = mutableListOf()
                     fetcher.suiHistory.forEach { history ->
-                        val headerDate = dpTimeToYear(history["timestampMs"].asString.toLong())
+                        val timestampMs =
+                            java.time.Instant.parse(history["effects"].asJsonObject["timestamp"].asString)
+                                .toEpochMilli()
+                        val headerDate = dpTimeToYear(timestampMs)
                         result.add(Pair(headerDate, history))
                     }
                     _majorHistoryResult.postValue(result)
 
-                } else {
-                    if (fromHistoryResult is NetworkResult.Error) {
-                        _errorMessage.postValue("error type : ${fromHistoryResult.errorType}  error message : ${fromHistoryResult.errorMessage}")
-
-                    } else if (toHistoryResult is NetworkResult.Error) {
-                        _errorMessage.postValue("error type : ${toHistoryResult.errorType}  error message : ${toHistoryResult.errorMessage}")
-                    }
+                } else if (historyResult is NetworkResult.Error) {
+                    _errorMessage.postValue("error type : ${historyResult.errorType}  error message : ${historyResult.errorMessage}")
                 }
 
-            } catch (_: Exception) {
-
+            } catch (e: Exception) {
             }
         }
     }
