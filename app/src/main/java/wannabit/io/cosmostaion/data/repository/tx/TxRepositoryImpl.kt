@@ -17,6 +17,8 @@ import com.google.gson.JsonObject
 import com.google.protobuf.ByteString
 import com.google.protobuf.FieldMask
 import com.sui.rpc.v2.BcsProto
+import com.sui.rpc.v2.NameServiceGrpc
+import com.sui.rpc.v2.NameServiceProto
 import com.sui.rpc.v2.ObjectProto
 import com.sui.rpc.v2.SignatureProto
 import com.sui.rpc.v2.TransactionExecutionServiceGrpc
@@ -135,25 +137,24 @@ class TxRepositoryImpl : TxRepository {
         fetcher: SuiFetcher?,
         userInput: String?
     ): NetworkResult<String> {
+        val channel = fetcher?.getChannel()
         return try {
-            val suiResolveAddressRequest = JsonRpcRequest(
-                method = "suix_resolveNameServiceAddress", params = listOf(userInput)
-            )
-
-            val suiResolveAddressResponse =
-                jsonRpcResponse(fetcher?.suiRpc() ?: "", suiResolveAddressRequest)
-            val suiResolveAddressJsonObject = Gson().fromJson(
-                suiResolveAddressResponse.body?.string(), JsonObject::class.java
-            )
+            val stub = NameServiceGrpc.newBlockingStub(channel)
+            val request = NameServiceProto.LookupNameRequest.newBuilder()
+                .setName(userInput ?: "")
+                .build()
+            val response = stub.lookupName(request)
 
             safeApiCall(Dispatchers.IO) {
-                suiResolveAddressJsonObject["result"].asString
+                response.record.targetAddress
             }
 
         } catch (e: Exception) {
             safeApiCall(Dispatchers.IO) {
                 ""
             }
+        } finally {
+            channel?.shutdown()
         }
     }
 
@@ -303,7 +304,7 @@ class TxRepositoryImpl : TxRepository {
                 stub.account(request).account.accountInfos().third
 
         } else {
-            val response = RetrofitInstance.lcdApi(chain)
+            val response = lcdApi(chain)
                 .lcdAuthInfo(chain.address).asJsonObject["account"].asJsonObject
             chain.cosmosFetcher()?.cosmosLcdAuth = response
             chain.cosmosFetcher()?.cosmosAccountNumber = response.accountNumber()

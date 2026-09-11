@@ -63,8 +63,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainKyve
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainLava
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainLikeCoin
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainLombard
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainLum118
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainLum880
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainLumera
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainMantra
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainMedibloc
@@ -85,7 +83,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainPersistence750
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainPocket
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainProvenance
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainPundix
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainQuicksilver
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainRegen
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainSaga
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainSecret118
@@ -859,8 +856,6 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainLikeCoin())
     chains.add(ChainLinea())
     chains.add(ChainLombard())
-    chains.add(ChainLum880())
-    chains.add(ChainLum118())
     chains.add(ChainLumera())
     chains.add(ChainMantaPacific())
     chains.add(ChainMantle())
@@ -890,7 +885,6 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainProvenance())
     chains.add(ChainPundix())
     chains.add(ChainQubeticsEvm())
-    chains.add(ChainQuicksilver())
     chains.add(ChainRegen())
     chains.add(ChainSaga())
     chains.add(ChainScroll())
