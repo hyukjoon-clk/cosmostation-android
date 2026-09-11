@@ -1012,7 +1012,7 @@ class WalletRepositoryImpl : WalletRepository {
                 StateServiceProto.ListOwnedObjectsRequest.newBuilder().setOwner(chain.mainAddress)
                     .setReadMask(
                         FieldMask.newBuilder().addPaths("object_type").addPaths("balance")
-                            .addPaths("json").addPaths("display").build()
+                            .addPaths("json").addPaths("display").addPaths("digest").build()
                     )
             pageToken?.let { request.setPageToken(pageToken) }
 
@@ -1055,7 +1055,11 @@ class WalletRepositoryImpl : WalletRepository {
     }
 
     override suspend fun suiStakeRewards(
-        fetcher: SuiFetcher, chain: ChainSui, stakedObjects: List<ObjectProto.Object>, poolMap: Map<String, PoolInfo>, currentEpoch: Long
+        fetcher: SuiFetcher,
+        chain: ChainSui,
+        stakedObjects: List<ObjectProto.Object>,
+        poolMap: Map<String, PoolInfo>,
+        currentEpoch: Long
     ): List<StakeReward> {
         val rateAmount = mutableMapOf<Pair<String, Long>, Pair<Long, Long>?>()
 
@@ -1107,28 +1111,6 @@ class WalletRepositoryImpl : WalletRepository {
         }
     }
 
-    override suspend fun suiStakes(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<JsonObject> {
-        return try {
-            val suiStakesRequest = JsonRpcRequest(
-                method = "suix_getStakes", params = listOf(chain.mainAddress)
-            )
-            val suiStakesResponse = jsonRpcResponse(fetcher.suiRpc(), suiStakesRequest)
-            val suiStakesJsonObject = Gson().fromJson(
-                suiStakesResponse.body?.string(), JsonObject::class.java
-            )
-            return safeApiCall(Dispatchers.IO) {
-                suiStakesJsonObject
-            }
-
-        } catch (e: Exception) {
-            safeApiCall(Dispatchers.IO) {
-                JsonObject()
-            }
-        }
-    }
-
     override suspend fun suiCoinMetadata(
         channel: ManagedChannel?, chain: ChainSui, coinType: String?
     ): NetworkResult<StateServiceProto.CoinMetadata?> {
@@ -1146,31 +1128,6 @@ class WalletRepositoryImpl : WalletRepository {
         } catch (e: Exception) {
             safeApiCall(Dispatchers.IO) {
                 null
-            }
-        }
-    }
-
-    override suspend fun suiApys(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<MutableList<JsonObject>> {
-        return try {
-            val suiApysRequest = JsonRpcRequest(
-                method = "suix_getValidatorsApy", params = listOf()
-            )
-            val suiApysResponse = jsonRpcResponse(fetcher.suiRpc(), suiApysRequest)
-            val suiApysJsonObject = Gson().fromJson(
-                suiApysResponse.body?.string(), JsonObject::class.java
-            )
-            val result = mutableListOf<JsonObject>()
-            suiApysJsonObject["result"].asJsonObject["apys"].asJsonArray.forEach { apy ->
-                result.add(apy.asJsonObject)
-            }
-            safeApiCall(Dispatchers.IO) {
-                result
-            }
-        } catch (e: Exception) {
-            safeApiCall(Dispatchers.IO) {
-                mutableListOf()
             }
         }
     }

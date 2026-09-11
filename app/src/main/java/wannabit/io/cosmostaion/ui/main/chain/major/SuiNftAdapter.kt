@@ -4,15 +4,15 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.google.gson.JsonObject
+import com.sui.rpc.v2.ObjectProto
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.databinding.ItemNftBinding
 import wannabit.io.cosmostaion.ui.main.chain.cosmos.NftViewHolder
 
-class MajorNftAdapter(val chain: BaseChain) :
-    ListAdapter<JsonObject, NftViewHolder>(NftDiffCallback()) {
+class SuiNftAdapter(val chain: BaseChain) :
+    ListAdapter<ObjectProto.Object, NftViewHolder>(NftDiffCallback()) {
 
-    private var onItemClickListener: ((BaseChain, JsonObject?) -> Unit)? = null
+    private var onItemClickListener: ((BaseChain, ObjectProto.Object?) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NftViewHolder {
         val binding = ItemNftBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -21,7 +21,7 @@ class MajorNftAdapter(val chain: BaseChain) :
 
     override fun onBindViewHolder(holder: NftViewHolder, position: Int) {
         val info = currentList[position]
-        holder.iotaBind(info)
+        holder.suiBind(info)
         holder.itemView.setOnClickListener {
             onItemClickListener?.let {
                 it(chain, info)
@@ -29,18 +29,24 @@ class MajorNftAdapter(val chain: BaseChain) :
         }
     }
 
-    private class NftDiffCallback : DiffUtil.ItemCallback<JsonObject>() {
+    private class NftDiffCallback : DiffUtil.ItemCallback<ObjectProto.Object>() {
 
-        override fun areItemsTheSame(oldItem: JsonObject, newItem: JsonObject): Boolean {
+        override fun areItemsTheSame(
+            oldItem: ObjectProto.Object,
+            newItem: ObjectProto.Object
+        ): Boolean {
             return oldItem == newItem
         }
 
-        override fun areContentsTheSame(oldItem: JsonObject, newItem: JsonObject): Boolean {
+        override fun areContentsTheSame(
+            oldItem: ObjectProto.Object,
+            newItem: ObjectProto.Object
+        ): Boolean {
             return oldItem == newItem
         }
     }
 
-    fun setOnItemClickListener(listener: (BaseChain, JsonObject?) -> Unit) {
+    fun setOnItemClickListener(listener: (BaseChain, ObjectProto.Object?) -> Unit) {
         onItemClickListener = listener
     }
 }

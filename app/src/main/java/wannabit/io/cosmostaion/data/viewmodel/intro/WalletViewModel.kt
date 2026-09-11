@@ -27,6 +27,7 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainBabylon
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.chain.fetcher.FinalityProvider
+import wannabit.io.cosmostaion.chain.fetcher.suiNormalizeType
 import wannabit.io.cosmostaion.chain.majorClass.ChainAptos
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
@@ -620,9 +621,11 @@ class WalletViewModel(private val walletRepository: WalletRepository) : ViewMode
                             (o1.tokensList.firstOrNull { it.denom == chain.getStakeAssetDenom() }?.amount?.toDouble()
                                 ?: 0.0) > (o2.tokensList.firstOrNull { it.denom == chain.getStakeAssetDenom() }?.amount?.toDouble()
                                 ?: 0.0) -> -1
+
                             (o1.tokensList.firstOrNull { it.denom == chain.getStakeAssetDenom() }?.amount?.toDouble()
                                 ?: 0.0) < (o2.tokensList.firstOrNull { it.denom == chain.getStakeAssetDenom() }?.amount?.toDouble()
                                 ?: 0.0) -> 1
+
                             else -> 0
                         }
                     }
@@ -812,14 +815,17 @@ class WalletViewModel(private val walletRepository: WalletRepository) : ViewMode
             is ChainSui -> {
                 chain.suiFetcher()?.let { fetcher ->
                     chain.apply {
-                        when (val response = walletRepository.suiBalance(fetcher, this)) {
+                        when (val response =
+                            walletRepository.suiBalance(fetcher.getChannel(), this)) {
                             is NetworkResult.Success -> {
                                 fetcher.suiBalances.clear()
-                                response.data?.get("result")?.asJsonArray?.forEach { balance ->
-                                    val coinType = balance.asJsonObject["coinType"].asString
-                                    val amount =
-                                        balance.asJsonObject["totalBalance"].asString.toBigDecimal()
-                                    fetcher.suiBalances.add(Pair(coinType, amount))
+                                response.data.forEach { balance ->
+                                    fetcher.suiBalances.add(
+                                        Pair(
+                                            balance.coinType.suiNormalizeType(),
+                                            balance.balance.toBigDecimal()
+                                        )
+                                    )
                                 }
                                 fetcher.suiBalances.sortWith { o1, o2 ->
                                     when {

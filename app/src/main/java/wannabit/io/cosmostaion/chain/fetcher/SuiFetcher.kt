@@ -1,10 +1,10 @@
 package wannabit.io.cosmostaion.chain.fetcher
 
-import com.google.gson.Gson
-import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.protobuf.Value
 import com.sui.rpc.v2.EpochProto
+import com.sui.rpc.v2.LedgerServiceGrpc
+import com.sui.rpc.v2.LedgerServiceProto
 import com.sui.rpc.v2.ObjectProto
 import com.sui.rpc.v2.StateServiceProto
 import com.sui.rpc.v2.SystemStateProto
@@ -18,14 +18,13 @@ import wannabit.io.cosmostaion.chain.majorClass.SUI_FEE_UNSTAKE
 import wannabit.io.cosmostaion.chain.majorClass.SUI_MAIN_DENOM
 import wannabit.io.cosmostaion.chain.majorClass.SUI_TYPE_COIN
 import wannabit.io.cosmostaion.common.BaseData
-import wannabit.io.cosmostaion.common.jsonRpcResponse
-import wannabit.io.cosmostaion.data.model.req.JsonRpcRequest
 import wannabit.io.cosmostaion.database.Prefs
 import wannabit.io.cosmostaion.sign.SuiJS
 import wannabit.io.cosmostaion.ui.tx.genTx.SuiTxType
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.TimeUnit
 
 class SuiFetcher(private val chain: BaseChain) {
 
@@ -125,11 +124,8 @@ class SuiFetcher(private val chain: BaseChain) {
 
     fun suiAllNfts(): MutableList<ObjectProto.Object> {
         return suiObjects.filter { suiObject ->
-            val types = suiObject.objectType.lowercase()
-            (!types.contains("stakedsui") && !types.contains("coin"))
-
-//            val types = suiObject["data"].asJsonObject["type"].asString.lowercase()
-//            (!types.contains("stakedsui") && !types.contains("coin"))
+            val type = suiObject.objectType.lowercase()
+            !type.contains("stakedsui") && !type.contains("coin")
         }.toMutableList()
     }
 
@@ -201,39 +197,59 @@ class SuiFetcher(private val chain: BaseChain) {
         if (suiAmount == 0L) 1.0 else poolTokenAmount.toDouble() / suiAmount.toDouble()
 
     private fun referenceGasPrice(): String {
-        val suixReferenceGasPriceRequest =
-            JsonRpcRequest(method = "suix_getReferenceGasPrice", params = listOf())
-        val suixReferenceGasPriceResponse = jsonRpcResponse(
-            suiRpc(), suixReferenceGasPriceRequest
-        )
-        val suixReferenceGasPriceJsonObject = Gson().fromJson(
-            suixReferenceGasPriceResponse.body?.string(), JsonObject::class.java
-        )
-        return suixReferenceGasPriceJsonObject["result"].asString
+        return suiSystem?.systemState?.referenceGasPrice?.toString() ?: "1000"
     }
 
-    private fun suixCoins(): JsonArray {
-        val suixGetCoinsRequest = JsonRpcRequest(
-            method = "suix_getCoins", params = listOf(chain.mainAddress, SUI_MAIN_DENOM, null, 1)
-        )
-        val suixGetCoinsResponse = jsonRpcResponse(chain.mainUrl, suixGetCoinsRequest)
-        val suixGetCoinsJsonObject = Gson().fromJson(
-            suixGetCoinsResponse.body?.string(), JsonObject::class.java
-        )
+    private fun suixCoins(): ObjectProto.Object? {
+        return suiObjects.firstOrNull { it.objectType.suiCoinType() == SUI_MAIN_DENOM }
+    }
 
-        return suixGetCoinsJsonObject["result"].asJsonObject["data"].asJsonArray
+    private val suiSuspiciousPattern = Regex(
+        "(https?://|www\\.|[a-zA-Z0-9-]+\\.(com|io|net|org|xyz|app|co|me|gg|link|finance))",
+        RegexOption.IGNORE_CASE
+    )
+
+    fun isSuiSuspiciousCoin(metadata: StateServiceProto.CoinMetadata?): Boolean {
+        if (metadata == null) return false
+        return suiSuspiciousPattern.containsMatchIn(metadata.name) ||
+                suiSuspiciousPattern.containsMatchIn(metadata.description)
+    }
+
+    fun buildSendRequest(
+        suiJs: SuiJS,
+        amount: String,
+        sender: String,
+        recipient: String,
+        coins: List<ObjectProto.Object>?,
+        coinType: String,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
+    ): String? {
+        val gasPrice = referenceGasPrice()
+
+        val coinsJs = coins?.takeIf { it.isNotEmpty() }?.joinToString(",", "[", "]") {
+            """{"coinType":"${it.objectType.suiCoinType()}","coinObjectId":"${it.objectId}","version":"${it.version}","digest":"${it.digest}"}"""
+        }
+
+        val buildSendSuiRequestFunction =
+            """function buildSendSuiRequestFunction() {
+        const txHex = buildSendSuiRequest('${amount}', '${sender}', '${recipient}', $coinsJs, '${coinType}', 
+        '${gasPrice}', '${gasBudget}', '${gasCoin.objectId}', '${gasCoin.version}', '${gasCoin.digest}');
+        return txHex;
+        }""".trimMargin()
+        suiJs.mergeFunction(buildSendSuiRequestFunction)
+        return suiJs.executeFunction("buildSendSuiRequestFunction()")
     }
 
     fun buildStakingRequest(suiJs: SuiJS, amount: String, validatorAddress: String?): String? {
         val gasPrice = referenceGasPrice()
-        val coinDatas = suixCoins()
+        val coinData = suixCoins()
 
-        return if (coinDatas.size() > 0) {
-            val coinData = coinDatas[0].asJsonObject
+        return if (coinData != null) {
             val gasBudget = suiBaseFee(SuiTxType.SUI_STAKE)
-            val coinObjectId = coinData["coinObjectId"].asString
-            val version = coinData["version"].asString
-            val digest = coinData["digest"].asString
+            val coinObjectId = coinData.objectId
+            val version = coinData.version
+            val digest = coinData.digest
 
             val buildStakingRequestFunction =
                 """function buildStakingRequestFunction() {
@@ -249,32 +265,33 @@ class SuiFetcher(private val chain: BaseChain) {
         }
     }
 
-    private fun suiObject(objectId: String): JsonObject {
-        val suiGetObjectRequest = JsonRpcRequest(
-            method = "sui_getObject", params = listOf(objectId, mapOf("showContent" to false))
-        )
-        val suiGetObjectResponse = jsonRpcResponse(chain.mainUrl, suiGetObjectRequest)
-        val suiGetObjectJsonObject = Gson().fromJson(
-            suiGetObjectResponse.body?.string(), JsonObject::class.java
-        )
+    private fun suiObject(objectId: String): ObjectProto.Object? {
+        return try {
+            val stub = LedgerServiceGrpc.newBlockingStub(getChannel())
+                .withDeadlineAfter(8, TimeUnit.SECONDS)
+            val request = LedgerServiceProto.GetObjectRequest.newBuilder()
+                .setObjectId(objectId)
+                .build()
 
-        return suiGetObjectJsonObject["result"].asJsonObject["data"].asJsonObject
+            stub.getObject(request).getObject()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun buildUnstakingRequest(suiJs: SuiJS, objectId: String): String? {
         val gasPrice = referenceGasPrice()
-        val coinDatas = suixCoins()
+        val coinData = suixCoins()
 
-        return if (coinDatas.size() > 0) {
-            val coinData = coinDatas[0].asJsonObject
+        return if (coinData != null) {
             val gasBudget = suiBaseFee(SuiTxType.SUI_UNSTAKE)
-            val coinObjectId = coinData["coinObjectId"].asString
-            val version = coinData["version"].asString
-            val digest = coinData["digest"].asString
+            val coinObjectId = coinData.objectId
+            val version = coinData.version
+            val digest = coinData.digest
 
             val stakedObject = suiObject(objectId)
-            val stakedObjectVersion = stakedObject["version"].asString
-            val stakedObjectDigest = stakedObject["digest"].asString
+            val stakedObjectVersion = stakedObject?.version.toString()
+            val stakedObjectDigest = stakedObject?.digest ?: ""
 
             val buildUnstakingRequestFunction =
                 """function buildUnstakingRequestFunction() {
@@ -342,6 +359,15 @@ fun JsonObject?.assetImg(): String {
 
 fun Value.getStringField(key: String): String? = structValue.fieldsMap[key]?.stringValue
 
+fun Value.suiNftUrl(): String? {
+    val raw = getStringField("image_url") ?: return null
+    return if (raw.startsWith("ipfs://")) {
+        raw.replace("ipfs://", "https://ipfs.io/ipfs/")
+    } else {
+        raw
+    }
+}
+
 fun JsonObject.moveRawNftUrlString(): String? {
     return try {
         this["display"].asJsonObject["data"].asJsonObject["image_url"].asString
@@ -376,9 +402,4 @@ fun JsonObject.moveValidatorName(): String {
 fun JsonObject.moveValidatorCommission(): BigDecimal {
     return this["commissionRate"].asString.toBigDecimal().movePointLeft(2)
         .setScale(2, RoundingMode.DOWN)
-}
-
-fun JsonObject.suiValidatorVp(): BigDecimal {
-    return this["stakingPoolSuiBalance"].asString.toBigDecimal().movePointLeft(9)
-        .setScale(9, RoundingMode.DOWN)
 }

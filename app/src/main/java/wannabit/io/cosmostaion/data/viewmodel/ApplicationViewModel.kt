@@ -1046,7 +1046,7 @@ class ApplicationViewModel(
                         fetcher.suiValidators.sortWith { o1, o2 ->
                             when {
                                 o1.name == "Cosmostation" -> -1
-                                o2.name == "Cosmostation" -> -1
+                                o2.name == "Cosmostation" -> 1
                                 else -> o2.votingPower.compareTo(o1.votingPower)
                             }
                         }
@@ -1054,7 +1054,7 @@ class ApplicationViewModel(
 
                     fetcher.suiObjects.forEach { suiObject ->
                         val coinType = suiObject.objectType.suiCoinType()
-                        if (coinType != null && suiObject.hasBalance()) {
+                        if (coinType != null && suiObject.hasBalance() && suiObject.balance > 0) {
                             val balance = suiObject.balance.toBigDecimal()
 
                             val index = fetcher.suiBalances.indexOfFirst { it.first == coinType }
@@ -1085,16 +1085,22 @@ class ApplicationViewModel(
                             }
                         }
 
+                        val suspiciousCoinTypes = mutableListOf<String>()
                         coinMetaDeferred.forEachIndexed { index, deferred ->
                             val coinMetadataResult = deferred.await()
                             if (coinMetadataResult is NetworkResult.Success && fetcher.suiBalances.isNotEmpty()) {
                                 fetcher.suiBalances[index].first?.let { type ->
                                     coinMetadataResult.data?.let { metadata ->
-                                        fetcher.suiCoinMeta[type] = metadata
+                                        if (fetcher.isSuiSuspiciousCoin(metadata)) {
+                                            suspiciousCoinTypes.add(type)
+                                        } else {
+                                            fetcher.suiCoinMeta[type] = metadata
+                                        }
                                     }
                                 }
                             }
                         }
+                        fetcher.suiBalances.removeAll { suspiciousCoinTypes.contains(it.first) }
                     }
 
                     fetchState = FetchState.SUCCESS

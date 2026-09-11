@@ -7,6 +7,7 @@ import coil.ImageLoader
 import coil.load
 import com.cosmos.staking.v1beta1.StakingProto
 import com.google.gson.JsonObject
+import com.sui.rpc.v2.SystemStateProto
 import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
@@ -15,7 +16,6 @@ import wannabit.io.cosmostaion.chain.fetcher.iotaValidatorVp
 import wannabit.io.cosmostaion.chain.fetcher.moveValidatorCommission
 import wannabit.io.cosmostaion.chain.fetcher.moveValidatorImg
 import wannabit.io.cosmostaion.chain.fetcher.moveValidatorName
-import wannabit.io.cosmostaion.chain.fetcher.suiValidatorVp
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.formatAmount
 import wannabit.io.cosmostaion.common.formatString
@@ -88,16 +88,20 @@ class ValidatorDefaultViewHolder(
         }
     }
 
-    fun suiBind(toValidator: JsonObject) {
+    fun suiBind(toValidator: SystemStateProto.Validator) {
         binding.apply {
             jailedImg.visibility = View.GONE
             monikerImg.setImageFromSvg(
-                toValidator.moveValidatorImg(), R.drawable.icon_default_vaildator
+                toValidator.imageUrl, R.drawable.icon_default_vaildator
             )
-            monikerName.text = toValidator.moveValidatorName().trim()
+            monikerName.text = toValidator.name.trim()
 
-            votingPower.text = formatAmount(toValidator.suiValidatorVp().toString(), 0)
-            commission.text = formatString("${toValidator.moveValidatorCommission()}%", 3)
+            val stakeAmount = toValidator.stakingPool.suiBalance.toBigDecimal()
+                .movePointLeft(9).setScale(0, RoundingMode.DOWN)
+            votingPower.text = formatAmount(stakeAmount.toString(), 0)
+            val commissionRate = toValidator.commissionRate.toBigDecimal().movePointLeft(2)
+                .setScale(2, RoundingMode.DOWN)
+            commission.text = formatString("${commissionRate}%", 3)
         }
     }
 

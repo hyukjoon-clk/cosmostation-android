@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.cosmos.staking.v1beta1.StakingProto
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.gson.JsonObject
+import com.sui.rpc.v2.SystemStateProto
 import org.apache.commons.lang3.StringUtils
 import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
@@ -27,7 +28,7 @@ class ValidatorDefaultFragment(
     private val selectedChain: BaseChain,
     private val fromValidator: StakingProto.Validator? = null,
     private val fromInitiaValidator: com.initia.mstaking.v1.StakingProto.Validator? = null,
-    private val suiFromValidator: MutableList<JsonObject>? = null,
+    private val suiFromValidator: MutableList<SystemStateProto.Validator>? = null,
     private val iotaFromValidator: MutableList<JsonObject>? = null,
     private val finalityProvider: MutableList<FinalityProvider>? = null,
     val listener: ValidatorDefaultListener
@@ -44,7 +45,7 @@ class ValidatorDefaultFragment(
     private var searchValidators: MutableList<StakingProto.Validator> = mutableListOf()
     private var searchInitiaValidators: MutableList<com.initia.mstaking.v1.StakingProto.Validator> =
         mutableListOf()
-    private var searchSuiValidators: MutableList<JsonObject> = mutableListOf()
+    private var searchSuiValidators: MutableList<SystemStateProto.Validator> = mutableListOf()
     private var searchIotaValidators: MutableList<JsonObject> = mutableListOf()
     private var searchProviders: MutableList<FinalityProvider> = mutableListOf()
 
@@ -207,7 +208,7 @@ class ValidatorDefaultFragment(
                         newText?.let { searchTxt ->
                             if (suiFromValidator != null) {
                                 suiFromValidator.filter { validator ->
-                                    validator.moveValidatorName()
+                                    validator.name
                                         .contains(searchTxt, ignoreCase = true)
                                 }.let { searchSuiValidators.addAll(it) }
                                 suiValidatorDefaultAdapter.notifyDataSetChanged()

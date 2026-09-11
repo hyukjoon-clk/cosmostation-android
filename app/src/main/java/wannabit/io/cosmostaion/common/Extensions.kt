@@ -298,22 +298,17 @@ fun ImageView.setProviderImg(chain: BaseChain, apiName: String, opAddress: Strin
 }
 
 fun ImageView.setImageFromSvg(imageUrl: String?, defaultImage: Int) {
+    val imageLoader = ImageLoader.Builder(context).components {
+        add(SvgDecoder.Factory())
+    }.memoryCachePolicy(CachePolicy.ENABLED).diskCachePolicy(CachePolicy.ENABLED).build()
+
     if (imageUrl?.isNotEmpty() == true) {
-        if (imageUrl.contains(".svg")) {
-            val imageLoader = ImageLoader.Builder(context).components {
-                add(SvgDecoder.Factory())
-            }.memoryCachePolicy(CachePolicy.ENABLED).diskCachePolicy(CachePolicy.ENABLED).build()
-            load(imageUrl, imageLoader) {
-                placeholder(defaultImage)
-                error(defaultImage)
-            }
-
-        } else {
-            Picasso.get().load(imageUrl).error(defaultImage).into(this)
+        load(imageUrl, imageLoader) {
+            placeholder(defaultImage)
+            error(defaultImage)
         }
-
     } else {
-        Picasso.get().load(defaultImage).into(this)
+        load(defaultImage, imageLoader)
     }
 }
 

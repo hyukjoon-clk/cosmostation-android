@@ -212,17 +212,9 @@ interface WalletRepository {
         fetcher: SuiFetcher, chain: ChainSui, stakedObjects: List<ObjectProto.Object>, poolMap: Map<String, PoolInfo>, currentEpoch: Long
     ): List<StakeReward>
 
-    suspend fun suiStakes(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<JsonObject>
-
     suspend fun suiCoinMetadata(
         channel: ManagedChannel?, chain: ChainSui, coinType: String?
     ): NetworkResult<StateServiceProto.CoinMetadata?>
-
-    suspend fun suiApys(
-        fetcher: SuiFetcher, chain: ChainSui
-    ): NetworkResult<MutableList<JsonObject>>
 
 
     //Iota
