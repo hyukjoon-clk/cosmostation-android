@@ -35,6 +35,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.protobuf.ByteString
+import com.google.protobuf.FieldMask
 import com.google.protobuf.util.JsonFormat
 import com.reown.android.Core
 import com.reown.android.CoreClient
@@ -43,6 +44,11 @@ import com.reown.sign.client.Sign.Model.Namespace
 import com.reown.sign.client.SignClient
 import com.reown.sign.client.SignInterface
 import com.reown.util.bytesToHex
+import com.sui.rpc.v2.BcsProto
+import com.sui.rpc.v2.SignatureProto
+import com.sui.rpc.v2.TransactionExecutionServiceGrpc
+import com.sui.rpc.v2.TransactionExecutionServiceProto
+import com.sui.rpc.v2.TransactionProto
 import com.tm2.tx.TxProto.Tx
 import com.tm2.tx.TxProto.TxFee
 import com.tm2.tx.TxProto.TxSignature
@@ -79,6 +85,7 @@ import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.CosmostationConstants.DAPP_ADDITIONAL_SCRIPT
 import wannabit.io.cosmostaion.common.formatJsonOptions
 import wannabit.io.cosmostaion.common.jsonRpcResponse
+import wannabit.io.cosmostaion.common.logLong
 import wannabit.io.cosmostaion.common.makeToast
 import wannabit.io.cosmostaion.common.safeApiCall
 import wannabit.io.cosmostaion.common.toObjectNode
@@ -1208,6 +1215,7 @@ class DappActivity : BaseActivity() {
             isCosmostation = true
             val messageId = requestJson.getString("messageId")
             val messageJson = requestJson.getJSONObject("message")
+            Log.e("Test12345 : ", messageJson.getString("method").toString())
 
             when (val method = messageJson.getString("method")) {
                 "cos_requestAccount", "cos_account", "ten_requestAccount", "ten_account" -> {
@@ -1750,104 +1758,105 @@ class DappActivity : BaseActivity() {
                     }
                 }
 
-//                // sui
-//                "sui_getAccount" -> {
-//                    if (selectSuiChain == null) {
-//                        selectSuiChain = allChains?.find { it.name == "Sui" }
-//                    }
-//                    val accountJson = JSONObject()
-//                    accountJson.put("address", selectSuiChain?.mainAddress)
-//                    accountJson.put("publicKey", "0x" + selectSuiChain?.publicKey?.bytesToHex())
-//                    appToWebResult(
-//                        messageJson, accountJson, messageId
-//                    )
-//                }
-//
-//                "sui_getChain" -> {
-//                    selectSuiChain = allChains?.find { it.name == "Sui" }
-//                    appToWebResult(
-//                        messageJson, "mainnet", messageId
-//                    )
-//                }
-//
-//                "sui_basicParam" -> {
-//                    if (selectSuiChain == null) {
-//                        selectSuiChain = allChains?.find { it.name == "Sui" }
-//                    }
-//                    val chainJson = JSONObject()
-//                    chainJson.put("rpc", (selectSuiChain as ChainSui).suiFetcher()?.suiRpc())
-//                    chainJson.put("address", (selectSuiChain as ChainSui).mainAddress)
-//                    appToWebResult(
-//                        messageJson, chainJson, messageId
-//                    )
-//                }
-//
-//                "sui_signTransaction", "sui_signTransactionBlock" -> {
-//                    val params = messageJson.getJSONObject("params")
-//                    val signBundle = signBundle(0, params.toString(), "sui_signTransaction")
-//                    showSuiSignDialog(
-//                        signBundle,
-//                        object : PopUpSuiSignFragment.WcSignRawDataListener {
-//                            override fun sign(id: Long, data: String, signature: String) {
-//                                val signed = JSONObject()
-//                                signed.put("transactionBlockBytes", data)
-//                                signed.put("signature", signature)
-//                                appToWebResult(
-//                                    messageJson, signed, messageId
-//                                )
-//                            }
-//
-//                            override fun cancel(id: Long) {
-//                                appToWebError(messageJson, messageId, "User rejected the request.")
-//                            }
-//                        })
-//                }
-//
-//                "sui_signAndExecuteTransactionBlock", "sui_signAndExecuteTransaction" -> {
-//                    val params = messageJson.getJSONObject("params")
-//                    val signBundle =
-//                        signBundle(0, params.toString(), "sui_signAndExecuteTransactionBlock")
-//                    showSuiSignDialog(
-//                        signBundle,
-//                        object : PopUpSuiSignFragment.WcSignRawDataListener {
-//                            override fun sign(id: Long, data: String, signature: String) {
-//                                approveSuiSignExecuteRequest(
-//                                    messageJson, messageId, data, signature
-//                                )
-//                            }
-//
-//                            override fun cancel(id: Long) {
-//                                appToWebError(messageJson, messageId, "User rejected the request.")
-//                            }
-//                        })
-//                }
-//
-//                "sui_signMessage", "sui_signPersonalMessage" -> {
-//                    val params = messageJson.getJSONObject("params")
-//                    if (params.getString("accountAddress")
-//                            .lowercase() != selectSuiChain?.mainAddress?.lowercase()
-//                    ) {
-//                        appToWebError(messageJson, messageId, "Wrong address")
-//                        return
-//                    }
-//                    val signBundle = signBundle(0, params.toString(), "sui_signMessage")
-//                    showSuiSignDialog(
-//                        signBundle,
-//                        object : PopUpSuiSignFragment.WcSignRawDataListener {
-//                            override fun sign(id: Long, data: String, signature: String) {
-//                                val signed = JSONObject()
-//                                signed.put("messageBytes", data)
-//                                signed.put("signature", signature)
-//                                appToWebResult(
-//                                    messageJson, signed, messageId
-//                                )
-//                            }
-//
-//                            override fun cancel(id: Long) {
-//                                appToWebError(messageJson, messageId, "User rejected the request.")
-//                            }
-//                        })
-//                }
+                // sui
+                "sui_getAccount" -> {
+                    if (selectSuiChain == null) {
+                        selectSuiChain = allChains?.find { it.name == "Sui" }
+                    }
+                    val accountJson = JSONObject()
+                    accountJson.put("address", selectSuiChain?.mainAddress)
+                    accountJson.put("publicKey", "0x" + selectSuiChain?.publicKey?.bytesToHex())
+                    appToWebResult(
+                        messageJson, accountJson, messageId
+                    )
+                }
+
+                "sui_getChain" -> {
+                    selectSuiChain = allChains?.find { it.name == "Sui" }
+                    appToWebResult(
+                        messageJson, "mainnet", messageId
+                    )
+                }
+
+                "sui_basicParam" -> {
+                    if (selectSuiChain == null) {
+                        selectSuiChain = allChains?.find { it.name == "Sui" }
+                    }
+                    val chainJson = JSONObject()
+                    chainJson.put("rpc", (selectSuiChain as ChainSui).suiFetcher()?.suiRpc())
+                    chainJson.put("address", (selectSuiChain as ChainSui).mainAddress)
+                    appToWebResult(
+                        messageJson, chainJson, messageId
+                    )
+                }
+
+                "sui_signTransaction", "sui_signTransactionBlock" -> {
+                    val params = messageJson.getJSONObject("params")
+                    logLong("Test12345 : ", params.toString())
+                    val signBundle = signBundle(0, params.toString(), "sui_signTransaction")
+                    showSuiSignDialog(
+                        signBundle,
+                        object : PopUpSuiSignFragment.WcSignRawDataListener {
+                            override fun sign(id: Long, data: String, signature: String) {
+                                val signed = JSONObject()
+                                signed.put("transactionBlockBytes", data)
+                                signed.put("signature", signature)
+                                appToWebResult(
+                                    messageJson, signed, messageId
+                                )
+                            }
+
+                            override fun cancel(id: Long) {
+                                appToWebError(messageJson, messageId, "User rejected the request.")
+                            }
+                        })
+                }
+
+                "sui_signAndExecuteTransactionBlock", "sui_signAndExecuteTransaction" -> {
+                    val params = messageJson.getJSONObject("params")
+                    val signBundle =
+                        signBundle(0, params.toString(), "sui_signAndExecuteTransactionBlock")
+                    showSuiSignDialog(
+                        signBundle,
+                        object : PopUpSuiSignFragment.WcSignRawDataListener {
+                            override fun sign(id: Long, data: String, signature: String) {
+                                approveSuiSignExecuteRequest(
+                                    messageJson, messageId, data, signature
+                                )
+                            }
+
+                            override fun cancel(id: Long) {
+                                appToWebError(messageJson, messageId, "User rejected the request.")
+                            }
+                        })
+                }
+
+                "sui_signMessage", "sui_signPersonalMessage" -> {
+                    val params = messageJson.getJSONObject("params")
+                    if (params.getString("accountAddress")
+                            .lowercase() != selectSuiChain?.mainAddress?.lowercase()
+                    ) {
+                        appToWebError(messageJson, messageId, "Wrong address")
+                        return
+                    }
+                    val signBundle = signBundle(0, params.toString(), "sui_signMessage")
+                    showSuiSignDialog(
+                        signBundle,
+                        object : PopUpSuiSignFragment.WcSignRawDataListener {
+                            override fun sign(id: Long, data: String, signature: String) {
+                                val signed = JSONObject()
+                                signed.put("messageBytes", data)
+                                signed.put("signature", signature)
+                                appToWebResult(
+                                    messageJson, signed, messageId
+                                )
+                            }
+
+                            override fun cancel(id: Long) {
+                                appToWebError(messageJson, messageId, "User rejected the request.")
+                            }
+                        })
+                }
 
                 //iota
                 "iota_getAccount" -> {
@@ -2576,27 +2585,44 @@ class DappActivity : BaseActivity() {
     ) {
         lifecycleScope.launch(Dispatchers.IO) {
             (selectSuiChain as ChainSui).suiFetcher()?.let { fetcher ->
-                val params = messageJson.getJSONObject("params")
-                val txJsonObject = JsonParser.parseString(params.toString()).asJsonObject
-                val options = if (txJsonObject["options"] != null) {
-                    formatJsonOptions(
-                        Gson().fromJson(
-                            txJsonObject["options"], JsonObject::class.java
+                try {
+                    val request = TransactionExecutionServiceProto.ExecuteTransactionRequest.newBuilder()
+                        .setTransaction(
+                            TransactionProto.Transaction.newBuilder()
+                                .setBcs(
+                                    BcsProto.Bcs.newBuilder()
+                                        .setValue(ByteString.copyFrom(Base64.decode(txByte, Base64.DEFAULT)))
+                                )
                         )
-                    )
-                } else {
-                    mapOf("showInput" to true, "showEffects" to true, "showEvents" to true)
-                }
+                        .addSignatures(
+                            SignatureProto.UserSignature.newBuilder()
+                                .setBcs(
+                                    BcsProto.Bcs.newBuilder()
+                                        .setValue(ByteString.copyFrom(Base64.decode(signature, Base64.DEFAULT)))
+                                )
+                        )
+                        .setReadMask(
+                            FieldMask.newBuilder()
+                                .addPaths("digest")
+                                .addPaths("effects")
+                                .addPaths("events")
+                                .addPaths("balance_changes")
+                        ).build()
 
-                val param = listOf(
-                    txByte, mutableListOf(signature), options, "WaitForLocalExecution"
-                )
-                val suiExecuteRequest = JsonRpcRequest(
-                    method = "sui_executeTransactionBlock", params = param
-                )
-                val suiExecuteResponse = jsonRpcResponse(fetcher.suiRpc(), suiExecuteRequest)
-                val suiExecuteJsonObject = JSONObject(suiExecuteResponse.body?.string())
-                appToWebResult(messageJson, suiExecuteJsonObject.getJSONObject("result"), messageId)
+                    val stub = TransactionExecutionServiceGrpc.newBlockingStub(fetcher.getChannel())
+                        .withDeadlineAfter(30L, TimeUnit.SECONDS)
+                    val response = stub.executeTransaction(request)
+
+                    appToWebResult(
+                        messageJson, JSONObject(
+                            JsonFormat.printer().includingDefaultValueFields()
+                                .print(response.transaction)
+                        ), messageId
+                    )
+
+                } catch (e: Exception) {
+                    appToWebError(messageJson, messageId, e.message ?: "Failed to execute transaction")
+                }
             }
         }
     }
