@@ -101,8 +101,6 @@ const val SUI_FEE_STAKE = "50000000"
 const val SUI_FEE_UNSTAKE = "50000000"
 const val SUI_FEE_DEFAULT = "70000000"
 
-const val MOVE_API = "https://us-central1-splash-wallet-60bd6.cloudfunctions.net"
-
 const val EXCHANGE_RATE_QUERY = """
     query(${'$'}tableId: SuiAddress!, ${'$'}epochKey: Base64!) {
         address(address: ${'$'}tableId) {

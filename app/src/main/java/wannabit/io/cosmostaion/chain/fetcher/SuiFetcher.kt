@@ -92,13 +92,7 @@ class SuiFetcher(private val chain: BaseChain) {
     }
 
     fun stakedAmount(): BigDecimal {
-        var staked = BigDecimal.ZERO
-        var earned = BigDecimal.ZERO
-        suiStakedList.forEach { suiStaked ->
-            staked = staked.add(suiStaked.principal.toBigDecimal())
-            earned = earned.add(suiStaked.estimatedReward.toBigDecimal())
-        }
-        return staked.add(earned)
+        return principalAmount().add(estimateRewardAmount())
     }
 
     private fun suiStakedValue(isUsd: Boolean? = false): BigDecimal {
@@ -305,6 +299,26 @@ class SuiFetcher(private val chain: BaseChain) {
         } else {
             ""
         }
+    }
+
+    fun buildSendNFTRequest(
+        suiJs: SuiJS,
+        sender: String,
+        recipient: String,
+        nftObject: ObjectProto.Object,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
+    ): String? {
+        val gasPrice = referenceGasPrice()
+
+        val buildSendSuiNFTRequestFunction =
+            """function buildSendSuiNFTRequestFunction() {
+        const txHex = buildSendSuiNFTRequest('${sender}', '${recipient}', '${nftObject.objectId}', '${nftObject.version}', '${nftObject.digest}',
+        '${gasPrice}', '${gasBudget}', '${gasCoin.objectId}', '${gasCoin.version}', '${gasCoin.digest}');
+        return txHex;
+        }""".trimMargin()
+        suiJs.mergeFunction(buildSendSuiNFTRequestFunction)
+        return suiJs.executeFunction("buildSendSuiNFTRequestFunction()")
     }
 }
 

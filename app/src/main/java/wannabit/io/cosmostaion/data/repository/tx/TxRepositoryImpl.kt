@@ -1568,21 +1568,24 @@ class TxRepositoryImpl : TxRepository {
     }
 
     override suspend fun unsafeTransferObject(
-        fetcher: SuiFetcher, sender: String, objectId: String, recipient: String, gasBudget: String
+        context: Context,
+        fetcher: SuiFetcher,
+        sender: String,
+        recipient: String,
+        nftObject: ObjectProto.Object,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
     ): NetworkResult<String> {
-        return try {
-            val param = listOf(sender, objectId, null, gasBudget, recipient)
+        if (!SuiJS.isInitialized()) {
+            SuiJS.initialize(context).await()
+        }
 
-            val suiUnSafeTransferObjectRequest = JsonRpcRequest(
-                method = "unsafe_transferObject", params = param
-            )
-            val suiUnSafeTransferObjectResponse =
-                jsonRpcResponse(fetcher.suiRpc(), suiUnSafeTransferObjectRequest)
-            val suiUnSafeTransferObjectJsonObject = Gson().fromJson(
-                suiUnSafeTransferObjectResponse.body?.string(), JsonObject::class.java
+        return try {
+            val response = fetcher.buildSendNFTRequest(
+                SuiJS, sender, recipient, nftObject, gasBudget, gasCoin
             )
             safeApiCall(Dispatchers.IO) {
-                suiUnSafeTransferObjectJsonObject["result"].asJsonObject["txBytes"].asString
+                Base64.toBase64String(Utils.hexToBytes(response))
             }
 
         } catch (e: Exception) {
@@ -1786,39 +1789,53 @@ class TxRepositoryImpl : TxRepository {
     }
 
     override suspend fun broadcastSuiNftSend(
+        context: Context,
         fetcher: SuiFetcher,
         sender: String,
-        objectId: String,
         recipient: String,
+        nftObject: ObjectProto.Object,
         gasBudget: String,
+        gasCoin: ObjectProto.Object,
         selectedChain: BaseChain
-    ): JsonObject {
+    ): TransactionExecutionServiceProto.ExecuteTransactionResponse? {
         try {
-//            val txBytes = unsafeTransferObject(fetcher, sender, objectId, recipient, gasBudget)
-//
-//            if (txBytes is NetworkResult.Success) {
-//                val dryRes = suiDryRun(fetcher, txBytes.data)
-//                if (dryRes is NetworkResult.Success && dryRes.data["error"] == null) {
-//                    val broadRes = suiExecuteTx(
-//                        fetcher, txBytes.data, Signer.moveSignature(selectedChain, txBytes.data)
-//                    )
-//                    if (broadRes is NetworkResult.Success) {
-//                        return broadRes.data
-//                    }
-//                }
-//            }
+            val txBytes = unsafeTransferObject(
+                context, fetcher, sender, recipient, nftObject, gasBudget, gasCoin
+            )
+
+            if (txBytes is NetworkResult.Success) {
+                val dryRes = suiDryRun(fetcher.getChannel(), txBytes.data)
+                if (dryRes is NetworkResult.Success && dryRes.data?.transaction?.effects?.status?.success == true) {
+                    val broadRes = suiExecuteTx(
+                        fetcher.getChannel(),
+                        txBytes.data,
+                        Signer.moveSignature(selectedChain, txBytes.data)
+                    )
+                    if (broadRes is NetworkResult.Success) {
+                        return broadRes.data
+                    }
+                }
+            }
 
         } catch (e: Exception) {
-            return JsonObject()
+            return null
         }
-        return JsonObject()
+        return null
     }
 
     override suspend fun simulateSuiNftSend(
-        fetcher: SuiFetcher, sender: String, objectId: String, recipient: String, gasBudget: String
+        context: Context,
+        fetcher: SuiFetcher,
+        sender: String,
+        recipient: String,
+        nftObject: ObjectProto.Object,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
     ): String {
         try {
-            val txBytes = unsafeTransferObject(fetcher, sender, objectId, recipient, gasBudget)
+            val txBytes = unsafeTransferObject(
+                context, fetcher, sender, recipient, nftObject, gasBudget, gasCoin
+            )
 
             if (txBytes is NetworkResult.Success) {
                 when (val response = suiDryRun(fetcher.getChannel(), txBytes.data)) {

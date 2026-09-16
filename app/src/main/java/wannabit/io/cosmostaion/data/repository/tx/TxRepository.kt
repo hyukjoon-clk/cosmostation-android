@@ -169,7 +169,13 @@ interface TxRepository {
     ): NetworkResult<String>
 
     suspend fun unsafeTransferObject(
-        fetcher: SuiFetcher, sender: String, objectId: String, recipient: String, gasBudget: String
+        context: Context,
+        fetcher: SuiFetcher,
+        sender: String,
+        recipient: String,
+        nftObject: ObjectProto.Object,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
     ): NetworkResult<String>
 
     suspend fun unsafeStake(
@@ -214,16 +220,24 @@ interface TxRepository {
     ): String
 
     suspend fun broadcastSuiNftSend(
+        context: Context,
         fetcher: SuiFetcher,
         sender: String,
-        objectId: String,
         recipient: String,
+        nftObject: ObjectProto.Object,
         gasBudget: String,
+        gasCoin: ObjectProto.Object,
         selectedChain: BaseChain
-    ): JsonObject
+    ): TransactionExecutionServiceProto.ExecuteTransactionResponse?
 
     suspend fun simulateSuiNftSend(
-        fetcher: SuiFetcher, sender: String, objectId: String, recipient: String, gasBudget: String
+        context: Context,
+        fetcher: SuiFetcher,
+        sender: String,
+        recipient: String,
+        nftObject: ObjectProto.Object,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
     ): String
 
     suspend fun broadcastSuiStake(

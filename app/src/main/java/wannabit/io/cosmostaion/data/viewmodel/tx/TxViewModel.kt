@@ -572,22 +572,27 @@ class TxViewModel(private val txRepository: TxRepository) : ViewModel() {
     }
 
     fun suiNftSendBroadcast(
+        context: Context,
         fetcher: SuiFetcher,
         sender: String,
-        objectId: String,
         recipient: String,
+        nftObject: ObjectProto.Object,
         gasBudget: String,
+        gasCoin: ObjectProto.Object,
         selectedChain: BaseChain
     ) = viewModelScope.launch(Dispatchers.IO) {
         try {
             val response = txRepository.broadcastSuiNftSend(
-                fetcher, sender, objectId, recipient, gasBudget, selectedChain
+                context, fetcher, sender, recipient, nftObject, gasBudget, gasCoin, selectedChain
             )
-//            if (response["error"] == null) {
-//                suiBroadcast.postValue(response)
-//            } else {
-//                errorMessage.postValue(response["error"].asJsonObject["message"].asString)
-//            }
+
+            if (response?.transaction?.effects?.status?.success == true) {
+                suiBroadcast.postValue(response)
+            } else {
+                val errorDescription = response?.transaction?.effects?.status?.error?.description
+                    ?: "Unknown error"
+                errorMessage.postValue(errorDescription)
+            }
 
         } catch (e: Exception) {
             errorMessage.postValue(e.message.toString())
@@ -595,11 +600,17 @@ class TxViewModel(private val txRepository: TxRepository) : ViewModel() {
     }
 
     fun suiNftSendSimulate(
-        fetcher: SuiFetcher, sender: String, objectId: String, recipient: String, gasBudget: String
+        context: Context,
+        fetcher: SuiFetcher,
+        sender: String,
+        recipient: String,
+        nftObject: ObjectProto.Object,
+        gasBudget: String,
+        gasCoin: ObjectProto.Object
     ) = viewModelScope.launch(Dispatchers.IO) {
         try {
             val response = txRepository.simulateSuiNftSend(
-                fetcher, sender, objectId, recipient, gasBudget
+                context, fetcher, sender, recipient, nftObject, gasBudget, gasCoin
             )
 
             if (response.toLongOrNull() != null) {

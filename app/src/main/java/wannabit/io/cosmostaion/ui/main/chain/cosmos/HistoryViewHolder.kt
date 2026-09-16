@@ -12,6 +12,7 @@ import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.fetcher.iotaCoinSymbol
 import wannabit.io.cosmostaion.chain.fetcher.suiCoinSymbol
+import wannabit.io.cosmostaion.chain.fetcher.suiNormalizeType
 import wannabit.io.cosmostaion.chain.majorClass.APTOS_MAIN_DENOM
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
@@ -296,7 +297,7 @@ class HistoryViewHolder(
                             .subtract(gasSummary["storageRebate"].asLong.toBigDecimal())
 
                         BaseData.getAsset(chain.apiName, SUI_MAIN_DENOM)?.let { asset ->
-                            balanceChanges?.firstOrNull { it.asJsonObject["coinType"].asJsonObject["repr"].asString == SUI_MAIN_DENOM }
+                            balanceChanges?.firstOrNull { it.asJsonObject["coinType"].asJsonObject["repr"].asString.suiNormalizeType() == SUI_MAIN_DENOM }
                                 ?.let { balance ->
                                     val amount =
                                         balance.asJsonObject["amount"].asString.toBigDecimal()
