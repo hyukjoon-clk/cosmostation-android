@@ -14,11 +14,12 @@ class GnoFetcher(private val chain: BaseChain) {
     var gnoAccountNumber: Long? = null
     var gnoSequence: Long? = null
     var gnoBalances: MutableList<CoinProto.Coin>? = null
+    var gnoVestings: MutableList<CoinProto.Coin>? = null
 
     var grc20Tokens = mutableListOf<Token>()
 
     fun allAssetValue(isUsd: Boolean? = false): BigDecimal {
-        return balanceValueSum(isUsd)
+        return balanceValueSum(isUsd).add(vestingValueSum(isUsd))
     }
 
     fun denomValue(denom: String, isUsd: Boolean? = false): BigDecimal? {
@@ -90,6 +91,37 @@ class GnoFetcher(private val chain: BaseChain) {
         if (gnoBalances?.isNotEmpty() == true) {
             gnoBalances?.forEach { balance ->
                 sum = sum.add(balanceValue(balance.denom, isUsd))
+            }
+        }
+        return sum
+    }
+
+    fun vestingAmount(denom: String): BigDecimal {
+        if (gnoVestings?.isNotEmpty() == true) {
+            return gnoVestings?.firstOrNull { it.denom == denom }?.amount?.toBigDecimal()
+                ?: BigDecimal.ZERO
+        }
+        return BigDecimal.ZERO
+    }
+
+    fun vestingValue(denom: String, isUsd: Boolean? = false): BigDecimal {
+        BaseData.getAsset(chain.apiName, denom)?.let { asset ->
+            val price = BaseData.getPrice(asset.coinGeckoId, isUsd)
+            val amount = vestingAmount(denom)
+            asset.decimals?.let { decimal ->
+                return price.multiply(amount).movePointLeft(decimal).setScale(6, RoundingMode.DOWN)
+            } ?: run {
+                return BigDecimal.ZERO
+            }
+        }
+        return BigDecimal.ZERO
+    }
+
+    private fun vestingValueSum(isUsd: Boolean? = false): BigDecimal {
+        var sum = BigDecimal.ZERO
+        if (gnoVestings?.isNotEmpty() == true) {
+            gnoVestings?.forEach { vesting ->
+                sum = sum.add(vestingValue(vesting.denom, isUsd))
             }
         }
         return sum

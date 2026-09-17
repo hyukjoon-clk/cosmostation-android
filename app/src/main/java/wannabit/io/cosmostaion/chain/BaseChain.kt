@@ -48,6 +48,7 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainFetchAi60Secp
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainFirma
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainGgezchain
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainGitopia
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainGonka
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainGravityBridge
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainHippocrat
@@ -448,7 +449,7 @@ open class BaseChain : Parcelable {
             val minFee = getDefaultFeeCoins(c)[i]
             val minFeeAmount = minFee.amount.toBigDecimal()
 
-            if (this is ChainGnoTestnet) {
+            if (this is ChainGno) {
                 val balance = gnoRpcFetcher?.balanceAmount(minFee.denom) ?: BigDecimal.ZERO
                 if (minFeeAmount <= balance) {
                     feeCoin = minFee
@@ -609,7 +610,7 @@ open class BaseChain : Parcelable {
 
     fun isTxFeePayable(c: Context): Boolean {
         getDefaultFeeCoins(c).forEach { fee ->
-            if (this is ChainGnoTestnet) {
+            if (this is ChainGno) {
                 if (fee.amount.toBigDecimal() <= gnoRpcFetcher?.balanceAmount(fee.denom)) {
                     return true
                 }
@@ -832,6 +833,7 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainGgezchain())
     chains.add(ChainGitopia())
     chains.add(ChainGonka())
+    chains.add(ChainGno())
     chains.add(ChainGnosis())
     chains.add(ChainGravityAlpha())
     chains.add(ChainGravityBridge())

@@ -22,10 +22,10 @@ import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.FetchState
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainDydx
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainOkt996Keccak
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
-import wannabit.io.cosmostaion.chain.testnetClass.ChainGnoTestnet
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.makeToast
 import wannabit.io.cosmostaion.common.showToast
@@ -199,7 +199,7 @@ class CoinFragment : Fragment(), CoinFragmentInteraction {
             }
 
             else -> {
-                if (selectedChain is ChainGnoTestnet) {
+                if (selectedChain is ChainGno) {
                     selectedChain.gnoRpcFetcher?.gnoBalances?.forEach { coin ->
                         val coinType = BaseData.getAsset(selectedChain.apiName, coin.denom)?.type
                         coinType?.let {
@@ -298,7 +298,7 @@ class CoinFragment : Fragment(), CoinFragmentInteraction {
                     }
                 }
 
-                if (selectedChain is ChainGnoTestnet) {
+                if (selectedChain is ChainGno) {
                     nativeCoins.sortWith(compareByDescending {
                         selectedChain.gnoRpcFetcher?.balanceValue(
                             it.denom

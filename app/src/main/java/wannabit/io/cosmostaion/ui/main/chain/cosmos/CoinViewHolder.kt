@@ -8,12 +8,12 @@ import com.bumptech.glide.Glide
 import org.bouncycastle.util.encoders.Base64
 import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.fetcher.assetImg
 import wannabit.io.cosmostaion.chain.fetcher.iotaCoinSymbol
 import wannabit.io.cosmostaion.chain.fetcher.suiCoinSymbol
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
 import wannabit.io.cosmostaion.chain.majorClass.ChainSui
-import wannabit.io.cosmostaion.chain.testnetClass.ChainGnoTestnet
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.formatAmount
 import wannabit.io.cosmostaion.common.formatAssetValue
@@ -59,7 +59,7 @@ class CoinViewHolder(
                     hideValue.visibility = View.GONE
 
                     coinAmount.text = formatAmount(amount.toPlainString(), 6)
-                    coinAmountValue.text = if (chain is ChainGnoTestnet) {
+                    coinAmountValue.text = if (chain is ChainGno) {
                         chain.gnoRpcFetcher?.denomValue(coin.denom)
                             ?.let { formatAssetValue(it) }
                     } else {

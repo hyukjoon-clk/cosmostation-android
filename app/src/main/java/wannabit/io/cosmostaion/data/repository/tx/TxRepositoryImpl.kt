@@ -54,6 +54,7 @@ import org.web3j.utils.Numeric
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.CosmosEndPointType
 import wannabit.io.cosmostaion.chain.PubKeyType
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.evmClass.ChainEthereum
 import wannabit.io.cosmostaion.chain.fetcher.AptosFetcher
 import wannabit.io.cosmostaion.chain.fetcher.FUNGIBLE_FUNCTION_TYPE
@@ -66,7 +67,6 @@ import wannabit.io.cosmostaion.chain.fetcher.sequence
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainSolana
 import wannabit.io.cosmostaion.chain.majorClass.IOTA_MAIN_DENOM
-import wannabit.io.cosmostaion.chain.testnetClass.ChainGnoTestnet
 import wannabit.io.cosmostaion.common.BaseConstant.ICNS_OSMOSIS_ADDRESS
 import wannabit.io.cosmostaion.common.BaseConstant.NS_ARCHWAY_ADDRESS
 import wannabit.io.cosmostaion.common.BaseConstant.NS_STARGZE_ADDRESS
@@ -274,7 +274,7 @@ class TxRepositoryImpl : TxRepository {
     override suspend fun auth(
         managedChannel: ManagedChannel?, chain: BaseChain
     ) {
-        return if (chain is ChainGnoTestnet) {
+        return if (chain is ChainGno) {
             val authRequest = JsonRpcRequest(
                 method = "abci_query",
                 params = listOf("auth/accounts/${chain.address}", "", "0", true)

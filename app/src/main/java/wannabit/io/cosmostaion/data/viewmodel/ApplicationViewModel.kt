@@ -24,6 +24,7 @@ import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.FetchState
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainBabylon
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainCheqd
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainNeutron
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainOkt996Keccak
@@ -42,7 +43,6 @@ import wannabit.io.cosmostaion.chain.majorClass.ChainSui
 import wannabit.io.cosmostaion.chain.majorClass.IOTA_MAIN_DENOM
 import wannabit.io.cosmostaion.chain.majorClass.SUI_MAIN_DENOM
 import wannabit.io.cosmostaion.chain.majorClass.SUI_STAKED_TYPE
-import wannabit.io.cosmostaion.chain.testnetClass.ChainGnoTestnet
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.formatJsonString
 import wannabit.io.cosmostaion.common.regexWithNumberAndChar
@@ -57,6 +57,7 @@ import wannabit.io.cosmostaion.database.model.RefAddress
 import wannabit.io.cosmostaion.ui.main.CosmostationApp
 import xyz.mcxross.kaptos.model.Option
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.concurrent.TimeUnit
 
 class ApplicationViewModel(
@@ -216,7 +217,7 @@ class ApplicationViewModel(
                     token.clone()
                 }?.toMutableList() ?: mutableListOf()
 
-            if (chain is ChainGnoTestnet) {
+            if (chain is ChainGno) {
                 chain.gnoRpcFetcher()?.grc20Tokens =
                     BaseData.grc20Tokens?.filter { it.chainName == chain.apiName }?.map { token ->
                         token.clone()
@@ -240,7 +241,7 @@ class ApplicationViewModel(
                 is ChainOkt996Keccak -> loadOktLcdData(this, baseAccountId, isEdit)
                 is ChainSui -> loadSuiData(baseAccountId, this, isEdit, isTx, isRefresh)
                 is ChainIota -> loadIotaData(baseAccountId, this, isEdit, isTx, isRefresh)
-                is ChainGnoTestnet -> loadRpcData(this, baseAccountId, isEdit)
+                is ChainGno -> loadRpcData(this, baseAccountId, isEdit)
                 is ChainSolana -> loadSolData(baseAccountId, this, isEdit)
                 is ChainAptos, is ChainMovement -> loadAptosData(baseAccountId, this, isEdit)
                 else -> {
@@ -1409,9 +1410,10 @@ class ApplicationViewModel(
             chain.apply {
                 when (val response = walletRepository.rpcAuth(chain)) {
                     is NetworkResult.Success -> {
-                        (chain as ChainGnoTestnet).gnoRpcFetcher()?.let { fetcher ->
+                        (chain as ChainGno).gnoRpcFetcher()?.let { fetcher ->
                             if (response.data.isSuccessful) {
                                 val tempBalances: MutableList<CoinProto.Coin> = mutableListOf()
+                                val tempVestings: MutableList<CoinProto.Coin> = mutableListOf()
                                 val jsonResponse = Gson().fromJson(
                                     response.data.body?.string(), JsonObject::class.java
                                 )
@@ -1444,22 +1446,68 @@ class ApplicationViewModel(
                                     val dataJson =
                                         Gson().fromJson(decodeData, JsonObject::class.java)
                                     val accountData = dataJson["BaseAccount"].asJsonObject
-                                    if (accountData["coins"].asString.isNotEmpty()) {
+
+                                    if (accountData["vesting"]?.isJsonNull == false) {
+                                        val vestingData = accountData["vesting"].asJsonObject
+                                        val (vestingDenom, originalVestingAmount) =
+                                            vestingData["original_vesting"].asString.regexWithNumberAndChar()
+                                        val startTime = vestingData["start_time"].asString.toLong()
+                                        val endTime = vestingData["end_time"].asString.toLong()
+                                        val now = System.currentTimeMillis() / 1000
+
+                                        val duration = (endTime - startTime).coerceAtLeast(1)
+                                        val elapsed = (now - startTime).coerceIn(0, duration)
+
+                                        val originalVesting =
+                                            originalVestingAmount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                                        val vested = originalVesting.multiply(elapsed.toBigDecimal())
+                                            .divide(duration.toBigDecimal(), 0, RoundingMode.DOWN)
+                                        val locked = (originalVesting - vested).coerceAtLeast(BigDecimal.ZERO)
+
+                                        val (balanceDenom, totalBalanceAmount) =
+                                            accountData["coins"].asString.regexWithNumberAndChar()
+                                        val total =
+                                            totalBalanceAmount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                                        val spendable = (total - locked).coerceAtLeast(BigDecimal.ZERO)
+
                                         tempBalances.add(
                                             CoinProto.Coin.newBuilder()
-                                                .setDenom(accountData["coins"].asString.regexWithNumberAndChar().first)
-                                                .setAmount(accountData["coins"].asString.regexWithNumberAndChar().second)
+                                                .setDenom(balanceDenom.ifEmpty { vestingDenom })
+                                                .setAmount(spendable.toPlainString())
                                                 .build()
                                         )
-                                    } else {
-                                        tempBalances.add(
+                                        tempVestings.add(
                                             CoinProto.Coin.newBuilder()
-                                                .setDenom(getStakeAssetDenom())
-                                                .setAmount("0").build()
+                                                .setDenom(vestingDenom)
+                                                .setAmount(locked.toPlainString())
+                                                .build()
                                         )
+
+                                    } else {
+                                        if (accountData["coins"].asString.isNotEmpty()) {
+                                            tempBalances.add(
+                                                CoinProto.Coin.newBuilder()
+                                                    .setDenom(accountData["coins"].asString.regexWithNumberAndChar().first)
+                                                    .setAmount(accountData["coins"].asString.regexWithNumberAndChar().second)
+                                                    .build()
+                                            )
+                                        } else {
+                                            tempBalances.add(
+                                                CoinProto.Coin.newBuilder()
+                                                    .setDenom(getStakeAssetDenom())
+                                                    .setAmount("0").build()
+                                            )
+
+                                            tempVestings.add(
+                                                CoinProto.Coin.newBuilder()
+                                                    .setDenom(getStakeAssetDenom())
+                                                    .setAmount("0").build()
+                                            )
+                                        }
                                     }
 
                                     fetcher.gnoBalances = tempBalances
+                                    fetcher.gnoVestings = tempVestings
                                     fetcher.gnoAccountNumber =
                                         accountData["account_number"].asString.toLong()
                                     fetcher.gnoSequence = accountData["sequence"].asString.toLong()

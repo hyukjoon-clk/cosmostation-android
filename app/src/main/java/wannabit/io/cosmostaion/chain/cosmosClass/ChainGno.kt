@@ -25,7 +25,7 @@ open class ChainGno : BaseChain(), Parcelable {
     override var cosmosEndPointType: CosmosEndPointType? = CosmosEndPointType.USE_RPC
     override var stakeDenom: String = "ugnot"
     override var accountPrefix: String = "g"
-    override var mainUrl: String = ""
+    override var mainUrl: String = "https://rpc.onbloc.xyz:443"
 
     fun gnoRpcFetcher(): GnoFetcher? {
         if (gnoRpcFetcher == null) {
