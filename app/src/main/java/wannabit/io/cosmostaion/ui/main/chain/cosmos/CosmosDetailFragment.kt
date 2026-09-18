@@ -280,7 +280,9 @@ class CosmosDetailFragment : Fragment() {
             if (selectedChain.isSupportCw721()) tableTitles.add("NFTs")
 
             tableTitles.add("Receive")
-            if (selectedChain.isSupportMintscan() || selectedChain.name == "OKT") tableTitles.add("History")
+            if (selectedChain.isSupportMintscan() || selectedChain.name == "OKT" || selectedChain is ChainGno) tableTitles.add(
+                "History"
+            )
             if (selectedChain.isSupportMobileDapp() && selectedChain.isDefault) tableTitles.add("Ecosystem")
             if (selectedChain.getChainListParam()?.size()!! > 0) tableTitles.add("About")
 

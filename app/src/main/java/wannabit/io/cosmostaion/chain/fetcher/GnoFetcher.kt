@@ -1,6 +1,7 @@
 package wannabit.io.cosmostaion.chain.fetcher
 
 import com.cosmos.base.v1beta1.CoinProto
+import com.google.gson.JsonObject
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.data.model.res.Token
@@ -15,6 +16,7 @@ class GnoFetcher(private val chain: BaseChain) {
     var gnoSequence: Long? = null
     var gnoBalances: MutableList<CoinProto.Coin>? = null
     var gnoVestings: MutableList<CoinProto.Coin>? = null
+    val gnoHistory: MutableList<JsonObject> = mutableListOf()
 
     var grc20Tokens = mutableListOf<Token>()
 
@@ -23,7 +25,7 @@ class GnoFetcher(private val chain: BaseChain) {
     }
 
     fun denomValue(denom: String, isUsd: Boolean? = false): BigDecimal? {
-        return balanceValue(denom, isUsd)
+        return balanceValue(denom, isUsd).add(vestingValue(denom, isUsd))
     }
 
     fun grc20TokenValue(address: String, isUsd: Boolean? = false): BigDecimal {
@@ -104,7 +106,7 @@ class GnoFetcher(private val chain: BaseChain) {
         return BigDecimal.ZERO
     }
 
-    fun vestingValue(denom: String, isUsd: Boolean? = false): BigDecimal {
+    private fun vestingValue(denom: String, isUsd: Boolean? = false): BigDecimal {
         BaseData.getAsset(chain.apiName, denom)?.let { asset ->
             val price = BaseData.getPrice(asset.coinGeckoId, isUsd)
             val amount = vestingAmount(denom)

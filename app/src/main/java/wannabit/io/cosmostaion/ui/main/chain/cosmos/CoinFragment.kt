@@ -280,20 +280,15 @@ class CoinFragment : Fragment(), CoinFragmentInteraction {
                 val mainCoin = (selectedChain.getChainListParam()?.get("main_asset_denom")?.asString
                     ?: "").uppercase()
                 if (mainCoin.isNotEmpty()) {
-                    if (nativeCoins.isEmpty()) {
-                        nativeCoins.add(
-                            Coin(
-                                mainCoin, "0", CoinType.NATIVE
-                            )
-                        )
-
-                    } else {
-                        if (nativeCoins.none { coin -> coin.denom.uppercase() == mainCoin }) {
-                            nativeCoins.add(
-                                Coin(
-                                    mainCoin, "0", CoinType.NATIVE
+                    stakeCoins.forEach { stakeCoin ->
+                        if (stakeCoin.denom.uppercase() != mainCoin) {
+                            if (nativeCoins.none { coin -> coin.denom.uppercase() == mainCoin }) {
+                                nativeCoins.add(
+                                    Coin(
+                                        mainCoin, "0", CoinType.NATIVE
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }

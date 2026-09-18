@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import wannabit.io.cosmostaion.chain.BaseChain
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainIota
 import wannabit.io.cosmostaion.chain.majorClass.ChainSui
@@ -100,6 +101,37 @@ class HistoryViewModel(private val historyRepository: HistoryRepository) : ViewM
                             java.time.Instant.parse(history["effects"].asJsonObject["timestamp"].asString)
                                 .toEpochMilli()
                         val headerDate = dpTimeToYear(timestampMs)
+                        result.add(Pair(headerDate, history))
+                    }
+                    _majorHistoryResult.postValue(result)
+
+                } else if (historyResult is NetworkResult.Error) {
+                    _errorMessage.postValue("error type : ${historyResult.errorType}  error message : ${historyResult.errorMessage}")
+                }
+
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    fun gnoHistory(chain: ChainGno) = viewModelScope.launch(Dispatchers.IO) {
+        chain.gnoRpcFetcher()?.let { fetcher ->
+            fetcher.gnoHistory.clear()
+
+            try {
+                val historyResult = historyRepository.gnoHistory(chain, chain.address)
+                if (historyResult is NetworkResult.Success) {
+                    fetcher.gnoHistory.addAll(historyResult.data ?: mutableListOf())
+
+                    val result: MutableList<Pair<String, JsonObject>> = mutableListOf()
+                    fetcher.gnoHistory.forEach { history ->
+                        val headerDate = if (history.has("time")) {
+                            val timestampMs =
+                                java.time.Instant.parse(history["time"].asString).toEpochMilli()
+                            dpTimeToYear(timestampMs)
+                        } else {
+                            ""
+                        }
                         result.add(Pair(headerDate, history))
                     }
                     _majorHistoryResult.postValue(result)

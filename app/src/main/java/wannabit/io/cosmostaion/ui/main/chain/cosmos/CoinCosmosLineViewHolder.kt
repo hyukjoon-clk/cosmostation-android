@@ -84,6 +84,9 @@ class CoinCosmosLineViewHolder(
                         } else {
                             context.getString(R.string.str_vesting)
                         }
+                        stakedLayout.goneOrVisible(chain is ChainGno)
+                        unstakingLayout.goneOrVisible(chain is ChainGno)
+                        rewardLayout.goneOrVisible(chain is ChainGno)
 
                         if (chain.cosmosFetcher?.rewardAllCoins()?.isNotEmpty() == true) {
                             rewardTitle.text =

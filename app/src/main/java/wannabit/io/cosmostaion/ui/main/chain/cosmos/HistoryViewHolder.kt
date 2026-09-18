@@ -28,6 +28,7 @@ import wannabit.io.cosmostaion.common.formatAmount
 import wannabit.io.cosmostaion.common.formatCurrentTimeToYear
 import wannabit.io.cosmostaion.common.formatTxTime
 import wannabit.io.cosmostaion.common.formatTxTimeStampToHour
+import wannabit.io.cosmostaion.common.regexWithNumberAndChar
 import wannabit.io.cosmostaion.common.visibleOrGone
 import wannabit.io.cosmostaion.data.model.res.CosmosHistory
 import wannabit.io.cosmostaion.databinding.ItemHistoryBinding
@@ -779,6 +780,151 @@ class HistoryViewHolder(
                 txHeight.text = ""
             }
             txHash.text = historyMoveGroup.second["hash"].asString
+        }
+    }
+
+    fun bindGnoHistory(
+        chain: BaseChain,
+        historyGnoGroup: Pair<String, JsonObject>,
+        headerIndex: Int,
+        cnt: Int,
+        position: Int
+    ) {
+        binding.apply {
+            historyView.setBackgroundResource(R.drawable.item_bg)
+            headerLayout.visibleOrGone(headerIndex == position)
+            txCnt.visibility = View.GONE
+            txDenom.setTextColor(Color.parseColor("#ffffff"))
+
+            val headerDate = historyGnoGroup.first
+            val currentDate = formatCurrentTimeToYear()
+            if (headerDate == currentDate) {
+                headerTitle.text = context.getString(R.string.str_today)
+            } else {
+                headerTitle.text = headerDate
+            }
+            headerCnt.text = "($cnt)"
+
+            val tx = historyGnoGroup.second
+            val messages = tx["messages"]?.takeIf { it.isJsonArray }?.asJsonArray ?: JsonArray()
+
+            var title = ""
+            var description = ""
+
+            if (messages.size() > 0) {
+                val firstValue = messages.first().asJsonObject["value"]?.asJsonObject
+                val typeName = firstValue?.get("__typename")?.asString ?: ""
+                description = if (messages.size() > 1) {
+                    "$typeName + ${messages.size() - 1}"
+                } else {
+                    typeName
+                }
+
+                when (typeName) {
+                    "BankMsgSend" -> {
+                        val fromAddress = firstValue?.get("from_address")?.asString
+                        title = if (fromAddress == chain.address) {
+                            context.getString(R.string.tx_send)
+                        } else {
+                            context.getString(R.string.tx_receive)
+                        }
+
+                        val (denom, amount) = firstValue?.get("amount")?.asString
+                            ?.regexWithNumberAndChar() ?: Pair("", "")
+                        BaseData.getAsset(chain.apiName, denom)?.let { asset ->
+                            val dpAmount = amount.toBigDecimalOrNull()
+                                ?.movePointLeft(asset.decimals ?: 6)
+                                ?.setScale(asset.decimals ?: 6, RoundingMode.DOWN)
+                                ?: BigDecimal.ZERO
+                            txAmount.text = formatAmount(dpAmount.toString(), asset.decimals ?: 6)
+                            txDenom.text = asset.symbol
+                        } ?: run {
+                            txAmount.text = ""
+                            txDenom.text = "-"
+                        }
+                    }
+
+                    "MsgCall" -> {
+                        val func = firstValue?.get("func")?.asString.orEmpty()
+                        val caller = firstValue?.get("caller")?.asString
+                        val args =
+                            firstValue?.get("args")?.takeIf { it.isJsonArray }?.asJsonArray
+
+                        if (func.equals("Transfer", ignoreCase = true) && (args?.size()
+                                ?: 0) >= 1
+                        ) {
+                            title = if (caller == chain.address) {
+                                context.getString(R.string.tx_send)
+                            } else {
+                                context.getString(R.string.tx_receive)
+                            }
+
+                            val pkgPath = firstValue?.get("pkg_path")?.asString ?: ""
+                            val amountArg = if (args!!.size() >= 2) args[1].asString else null
+                            BaseData.getToken(chain, chain.apiName, pkgPath)?.let { token ->
+                                val dpAmount = amountArg?.toBigDecimalOrNull()
+                                    ?.movePointLeft(token.decimals)
+                                    ?.setScale(token.decimals, RoundingMode.DOWN)
+                                    ?: BigDecimal.ZERO
+                                txAmount.text =
+                                    formatAmount(dpAmount.toString(), token.decimals)
+                                txDenom.text = token.symbol
+                            } ?: run {
+                                txAmount.text = ""
+                                txDenom.text = "-"
+                            }
+
+                        } else {
+                            title = if (func.contains("swap", ignoreCase = true)) {
+                                context.getString(R.string.title_swap)
+                            } else {
+                                func.ifEmpty { "Contract Call" }
+                            }
+                            txAmount.text = ""
+                            txDenom.text = "-"
+                        }
+                    }
+
+                    "MsgAddPackage" -> {
+                        title = "Deploy Package"
+                        txAmount.text = ""
+                        txDenom.text = "-"
+                    }
+
+                    "MsgRun" -> {
+                        title = "Run"
+                        txAmount.text = ""
+                        txDenom.text = "-"
+                    }
+
+                    else -> {
+                        txAmount.text = ""
+                        txDenom.text = "-"
+                    }
+                }
+
+            } else {
+                txAmount.text = ""
+                txDenom.text = "-"
+            }
+
+            txMessage.text = title.ifEmpty { description.ifEmpty { "Transaction" } }
+
+            if (tx["success"]?.asBoolean == true) {
+                txSuccessImg.setImageResource(R.drawable.icon_history_success)
+                txTime.text = if (tx.has("time")) {
+                    dpTimeToMonth(java.time.Instant.parse(tx["time"].asString).toEpochMilli())
+                } else {
+                    ""
+                }
+                txHeight.text = "(" + (tx["block_height"]?.asLong ?: 0L) + ")"
+
+            } else {
+                txSuccessImg.setImageResource(R.drawable.icon_history_fail)
+                txTime.text = ""
+                txHeight.text = ""
+            }
+            txHash.text = tx["hash"]?.asString ?: ""
         }
     }
 }

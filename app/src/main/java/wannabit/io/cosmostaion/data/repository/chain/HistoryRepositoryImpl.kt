@@ -5,6 +5,9 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import retrofit2.Response
 import wannabit.io.cosmostaion.chain.BaseChain
+import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
+import wannabit.io.cosmostaion.chain.cosmosClass.GNO_BLOCK_TIME_QUERY
+import wannabit.io.cosmostaion.chain.cosmosClass.GNO_HISTORY_QUERY
 import wannabit.io.cosmostaion.chain.fetcher.IotaFetcher
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
 import wannabit.io.cosmostaion.chain.majorClass.ChainSui
@@ -50,6 +53,55 @@ class HistoryRepositoryImpl : HistoryRepository {
 
         } catch (e: Exception) {
             safeApiCall(Dispatchers.IO) { Pair(mutableListOf(), null) }
+        }
+    }
+
+    override suspend fun gnoHistory(
+        chain: ChainGno, address: String
+    ): NetworkResult<MutableList<JsonObject>?> {
+        return try {
+            val response = graphQlResponse(
+                chain.gnoIndexerUrl, GNO_HISTORY_QUERY, mapOf("addr" to address)
+            )
+            val json = Gson().fromJson(response.body?.string(), JsonObject::class.java)
+            val txs = json["data"]?.asJsonObject?.get("getTransactions")?.takeIf { it.isJsonArray }
+                ?.asJsonArray
+
+            val result: MutableList<JsonObject> = mutableListOf()
+            txs?.forEach { result.add(it.asJsonObject) }
+
+            val heights = result.mapNotNull {
+                it["block_height"]?.takeIf { h -> !h.isJsonNull }?.asLong
+            }.distinct()
+
+            if (heights.isNotEmpty()) {
+                val heightFilters = heights.map { mapOf("height" to mapOf("eq" to it)) }
+                val blockResponse = graphQlResponse(
+                    chain.gnoIndexerUrl, GNO_BLOCK_TIME_QUERY, mapOf("heights" to heightFilters)
+                )
+                val blockJson = Gson().fromJson(blockResponse.body?.string(), JsonObject::class.java)
+                val blocks = blockJson["data"]?.asJsonObject?.get("getBlocks")
+                    ?.takeIf { it.isJsonArray }?.asJsonArray
+
+                val timeMap = mutableMapOf<Long, String>()
+                blocks?.forEach { block ->
+                    val height = block.asJsonObject["height"].asLong
+                    val time = block.asJsonObject["time"].asString
+                    timeMap[height] = time
+                }
+
+                result.forEach { tx ->
+                    val height = tx["block_height"]?.takeIf { !it.isJsonNull }?.asLong
+                    timeMap[height]?.let { time ->
+                        tx.addProperty("time", time)
+                    }
+                }
+            }
+
+            safeApiCall(Dispatchers.IO) { result }
+
+        } catch (e: Exception) {
+            safeApiCall(Dispatchers.IO) { mutableListOf() }
         }
     }
 
