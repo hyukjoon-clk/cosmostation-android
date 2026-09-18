@@ -14,7 +14,6 @@ import android.text.Spannable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
-import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -940,16 +939,6 @@ fun graphQlResponse(url: String, query: String, variables: Map<String, Any?>): R
     val request = Request.Builder().url(url)
         .post(body.toRequestBody("application/json".toMediaTypeOrNull())).build()
     return OkHttpClient().newCall(request).execute()
-}
-
-fun logLong(tag: String, message: String) {
-    val maxLogSize = 4000
-    var i = 0
-    while (i < message.length) {
-        val end = minOf(i + maxLogSize, message.length)
-        Log.e(tag, message.substring(i, end))
-        i += maxLogSize
-    }
 }
 
 fun CoinProto.DecCoin.getdAmount(): BigDecimal {

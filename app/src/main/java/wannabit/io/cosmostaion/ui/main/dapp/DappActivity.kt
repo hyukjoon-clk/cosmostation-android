@@ -85,7 +85,6 @@ import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.CosmostationConstants.DAPP_ADDITIONAL_SCRIPT
 import wannabit.io.cosmostaion.common.formatJsonOptions
 import wannabit.io.cosmostaion.common.jsonRpcResponse
-import wannabit.io.cosmostaion.common.logLong
 import wannabit.io.cosmostaion.common.makeToast
 import wannabit.io.cosmostaion.common.safeApiCall
 import wannabit.io.cosmostaion.common.toObjectNode
@@ -1215,7 +1214,6 @@ class DappActivity : BaseActivity() {
             isCosmostation = true
             val messageId = requestJson.getString("messageId")
             val messageJson = requestJson.getJSONObject("message")
-            Log.e("Test12345 : ", messageJson.getString("method").toString())
 
             when (val method = messageJson.getString("method")) {
                 "cos_requestAccount", "cos_account", "ten_requestAccount", "ten_account" -> {
@@ -1778,21 +1776,8 @@ class DappActivity : BaseActivity() {
                     )
                 }
 
-                "sui_basicParam" -> {
-                    if (selectSuiChain == null) {
-                        selectSuiChain = allChains?.find { it.name == "Sui" }
-                    }
-                    val chainJson = JSONObject()
-                    chainJson.put("rpc", (selectSuiChain as ChainSui).suiFetcher()?.suiRpc())
-                    chainJson.put("address", (selectSuiChain as ChainSui).mainAddress)
-                    appToWebResult(
-                        messageJson, chainJson, messageId
-                    )
-                }
-
                 "sui_signTransaction", "sui_signTransactionBlock" -> {
                     val params = messageJson.getJSONObject("params")
-                    logLong("Test12345 : ", params.toString())
                     val signBundle = signBundle(0, params.toString(), "sui_signTransaction")
                     showSuiSignDialog(
                         signBundle,

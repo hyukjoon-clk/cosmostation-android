@@ -13,19 +13,17 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.google.protobuf.ByteString
 import com.google.protobuf.FieldMask
-import com.sui.rpc.v2.BcsProto
 import com.sui.rpc.v2.TransactionExecutionServiceGrpc
 import com.sui.rpc.v2.TransactionExecutionServiceProto
 import com.sui.rpc.v2.TransactionProto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.i2p.crypto.eddsa.Utils
 import org.bouncycastle.util.encoders.Base64
 import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
+import wannabit.io.cosmostaion.sign.mapProgrammableTransactionKind
 import wannabit.io.cosmostaion.chain.majorClass.ChainSui
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.formatAmount
@@ -118,33 +116,33 @@ class PopUpSuiSignFragment(
                             txJsonObject["transactionBlockSerialized"].asString,
                             JsonObject::class.java
                         )
-                        val buildHexString = txJsonObject["buildHexString"].asString
 
                         var format = ""
                         var gasCost = BigDecimal.ZERO
 
-                        if (buildHexString.isNotEmpty()) {
-                            val txBytes = Base64.toBase64String(Utils.hexToBytes(buildHexString))
+                        try {
+                            val kind = mapProgrammableTransactionKind(txSerialized)
 
                             val request =
                                 TransactionExecutionServiceProto.SimulateTransactionRequest.newBuilder()
                                     .setTransaction(
-                                        TransactionProto.Transaction.newBuilder().setBcs(
-                                            BcsProto.Bcs.newBuilder().setValue(
-                                                ByteString.copyFrom(Base64.decode(txBytes))
-                                            )
-                                        )
-                                    ).setReadMask(
+                                        TransactionProto.Transaction.newBuilder()
+                                            .setSender(selectedChain?.mainAddress ?: "")
+                                            .setKind(kind)
+                                    )
+                                    .setDoGasSelection(true)
+                                    .setReadMask(
                                         FieldMask.newBuilder()
                                             .addPaths("transaction.effects")
-                                            .addPaths("transaction.transaction.gas_payment")
+                                            .addPaths("transaction.transaction")
                                     ).build()
 
                             val stub =
                                 TransactionExecutionServiceGrpc.newBlockingStub(fetcher.getChannel())
-                                    .withDeadlineAfter(8L, TimeUnit.SECONDS)
+                                    .withDeadlineAfter(15L, TimeUnit.SECONDS)
                             val response = stub.simulateTransaction(request)
-                            val gasPayment = response.transaction.transaction.gasPayment
+                            val resolvedTx = response.transaction.transaction
+                            val gasPayment = resolvedTx.gasPayment
 
                             txSerialized.addProperty("sender", selectedChain?.mainAddress)
                             if (txSerialized["gasData"] != null) {
@@ -177,8 +175,14 @@ class PopUpSuiSignFragment(
                                 BigDecimal.ZERO
                             }
                             gasCost = computationCost.add(dpCost).setScale(0, RoundingMode.DOWN)
+
+                            val txBytes =
+                                Base64.toBase64String(resolvedTx.bcs.value.toByteArray())
                             updateData = txBytes
                             signature = Signer.moveSignature(selectedChain as ChainSui, txBytes)[0]
+
+                        } catch (e: Exception) {
+                            format = e.message ?: "Failed to build transaction"
                         }
 
                         withContext(Dispatchers.Main) {
