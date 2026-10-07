@@ -28,7 +28,6 @@ import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainBabylon
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainNeutron
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.amountHandlerLeft
 import wannabit.io.cosmostaion.common.dpToPx
@@ -296,11 +295,7 @@ class ClaimRewardFragment : BaseTxFragment() {
                         validatorCnt.visibility = View.GONE
                     }
 
-                    val rewardDenom = if (selectedChain is ChainSunrise) {
-                        selectedChain.getMainAssetDenom()
-                    } else {
-                        selectedChain.getStakeAssetDenom()
-                    }
+                    val rewardDenom = selectedChain.getStakeAssetDenom()
 
                     BaseData.getAsset(selectedChain.apiName, rewardDenom)
                         ?.let { asset ->

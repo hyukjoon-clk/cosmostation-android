@@ -24,11 +24,9 @@ import wannabit.io.cosmostaion.chain.FetchState
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainDydx
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainGno
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainOkt996Keccak
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.makeToast
-import wannabit.io.cosmostaion.common.showToast
 import wannabit.io.cosmostaion.common.visibleOrGone
 import wannabit.io.cosmostaion.data.model.res.Coin
 import wannabit.io.cosmostaion.data.model.res.CoinType
@@ -588,15 +586,6 @@ class CoinFragment : Fragment(), CoinFragmentInteraction {
                     }
 
                     if (position == 0) {
-                        if (chain is ChainSunrise) {
-                            requireActivity().showToast(
-                                view,
-                                R.string.error_tranfer_disabled_vrise,
-                                false
-                            )
-                            return@setOnItemClickListener
-                        }
-
                         if (chain.isEvmCosmos() && chain !is ChainOktEvm) {
                             handleOneClickWithDelay(
                                 SelectSendTypeFragment.newInstance(

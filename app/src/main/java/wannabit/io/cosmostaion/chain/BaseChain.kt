@@ -95,7 +95,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainSentinel
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainShentu
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainSommelier
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainStride
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainSymphony
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainTerra
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainTerraClassic
@@ -905,7 +904,6 @@ fun allChains(): MutableList<BaseChain> {
     chains.add(ChainStratosEvm())
     chains.add(ChainStride())
     chains.add(ChainSui())
-    chains.add(ChainSunrise())
     chains.add(ChainSymphony())
     chains.add(ChainTerra())
     chains.add(ChainTerraClassic())

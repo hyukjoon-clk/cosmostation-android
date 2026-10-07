@@ -26,7 +26,6 @@ import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainIxo
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainNeutron
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainOkt996Keccak
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
 import wannabit.io.cosmostaion.chain.evmClass.ChainKavaEvm
 import wannabit.io.cosmostaion.chain.evmClass.ChainOktEvm
 import wannabit.io.cosmostaion.chain.evmClass.ChainShidoEvm
@@ -227,7 +226,7 @@ class CosmosDetailFragment : Fragment() {
         binding.apply {
             fabStake.visibleOrGone(selectedChain.isStakeEnabled())
             fabClaimReward.visibleOrGone(selectedChain.isStakeEnabled())
-            fabCompounding.visibleOrGone(selectedChain.isStakeEnabled() && selectedChain !is ChainSunrise)
+            fabCompounding.visibleOrGone(selectedChain.isStakeEnabled())
             fabVote.goneOrVisible(!selectedChain.isStakeEnabled())
 
             BaseData.getAsset(selectedChain.apiName, selectedChain.getStakeAssetDenom())

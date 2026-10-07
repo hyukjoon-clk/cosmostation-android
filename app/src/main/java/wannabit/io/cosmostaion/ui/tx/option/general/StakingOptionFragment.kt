@@ -14,7 +14,6 @@ import wannabit.io.cosmostaion.R
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainInitia
 import wannabit.io.cosmostaion.chain.cosmosClass.ChainNeutron
-import wannabit.io.cosmostaion.chain.cosmosClass.ChainSunrise
 import wannabit.io.cosmostaion.common.goneOrVisible
 import wannabit.io.cosmostaion.common.makeToast
 import wannabit.io.cosmostaion.common.visibleOrGone
@@ -131,11 +130,6 @@ class StakingOptionFragment : BottomSheetDialogFragment() {
 
             if (selectedChain is ChainNeutron) {
                 claimRewardsLayout.visibility = View.GONE
-                compoundingLayout.visibility = View.GONE
-                view4.visibility = View.GONE
-            }
-
-            if (selectedChain is ChainSunrise) {
                 compoundingLayout.visibility = View.GONE
                 view4.visibility = View.GONE
             }
