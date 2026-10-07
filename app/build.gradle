@@ -14,11 +14,15 @@ android {
     def localPropertiesFile = rootProject.file("local.properties")
     def walletConnectApiKey = ""
     def skipApiKey = ""
+    def tatumApiKeyMainnet = ""
+    def tatumApiKeyTestnet = ""
     if (localPropertiesFile.exists()) {
         def localProperties = new Properties()
         localProperties.load(new FileInputStream(localPropertiesFile))
         walletConnectApiKey = localProperties['walletconnect.apiKey.release']
         skipApiKey = localProperties['skip.apiKey.release']
+        tatumApiKeyMainnet = localProperties['tatum.apiKey.mainnet.release']
+        tatumApiKeyTestnet = localProperties['tatum.apiKey.testnet.release']
     }
 
     compileSdk 36
@@ -49,6 +53,8 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             buildConfigField "String", "WALLETCONNECT_API_KEY", "\"${walletConnectApiKey}\""
             buildConfigField "String", "SKIP_API_KEY", "\"${skipApiKey}\""
+            buildConfigField "String", "TATUM_API_KEY_MAINNET", "\"${tatumApiKeyMainnet}\""
+            buildConfigField "String", "TATUM_API_KEY_TESTNET", "\"${tatumApiKeyTestnet}\""
             signingConfig signingConfigs.release
         }
     }

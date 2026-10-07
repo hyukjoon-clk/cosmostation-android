@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import org.bitcoinj.crypto.ChildNumber
+import wannabit.io.cosmostaion.BuildConfig
 import wannabit.io.cosmostaion.chain.AccountKeyType
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.PubKeyType
@@ -31,6 +32,7 @@ open class ChainBitCoin86 : BaseChain(), Parcelable {
 
     override var mainUrl: String = "https://bitcoin-mainnet.gateway.tatum.io"
     override var apiUrl: String = "https://staking-api.babylonlabs.io"
+    open var tatumApiKey: String = BuildConfig.TATUM_API_KEY_MAINNET
 
     override suspend fun setInfoWithPrivateKey(context: Context, privateKey: ByteArray?) {
         this.privateKey = privateKey

@@ -2526,7 +2526,9 @@ class TxRepositoryImpl : TxRepository {
             val estimateSmartFeeRequest = JsonRpcRequest(
                 method = "estimatesmartfee", params = listOf(2)
             )
-            val estimateSmartFeeResponse = jsonRpcResponse(chain.mainUrl, estimateSmartFeeRequest)
+            val estimateSmartFeeResponse = jsonRpcResponse(
+                chain.mainUrl, estimateSmartFeeRequest, mapOf("x-api-key" to chain.tatumApiKey)
+            )
             val estimateSmartFeeJsonObject = Gson().fromJson(
                 estimateSmartFeeResponse.body?.string(), JsonObject::class.java
             )
@@ -2547,7 +2549,9 @@ class TxRepositoryImpl : TxRepository {
         val sendRawTransactionRequest = JsonRpcRequest(
             method = "sendrawtransaction", params = listOf(txHex)
         )
-        val sendRawTransactionResponse = jsonRpcResponse(chain.mainUrl, sendRawTransactionRequest)
+        val sendRawTransactionResponse = jsonRpcResponse(
+            chain.mainUrl, sendRawTransactionRequest, mapOf("x-api-key" to chain.tatumApiKey)
+        )
         val sendRawTransactionJsonObject = Gson().fromJson(
             sendRawTransactionResponse.body?.string(), JsonObject::class.java
         )

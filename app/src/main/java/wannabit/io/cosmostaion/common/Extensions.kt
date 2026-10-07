@@ -927,11 +927,14 @@ fun fadeOutAnimation(view: View) {
     view.visibility = View.INVISIBLE
 }
 
-fun jsonRpcResponse(rpcUrl: String, request: JsonRpcRequest): Response {
+fun jsonRpcResponse(
+    rpcUrl: String, request: JsonRpcRequest, headers: Map<String, String> = emptyMap()
+): Response {
     val jsonRequest = ObjectMapper().writeValueAsString(request)
-    val rpcRequest = Request.Builder().url(rpcUrl)
-        .post(jsonRequest.toRequestBody("application/json".toMediaTypeOrNull())).build()
-    return OkHttpClient().newCall(rpcRequest).execute()
+    val requestBuilder = Request.Builder().url(rpcUrl)
+        .post(jsonRequest.toRequestBody("application/json".toMediaTypeOrNull()))
+    headers.forEach { (key, value) -> requestBuilder.addHeader(key, value) }
+    return OkHttpClient().newCall(requestBuilder.build()).execute()
 }
 
 fun graphQlResponse(url: String, query: String, variables: Map<String, Any?>): Response {

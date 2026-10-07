@@ -5,6 +5,7 @@ import com.babylon.btcstaking.v1.QueryProto
 import com.babylon.finality.v1.QueryProto.ActiveFinalityProvidersAtHeightResponse
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import wannabit.io.cosmostaion.chain.BaseChain
 import wannabit.io.cosmostaion.chain.PubKeyType
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
@@ -92,7 +93,9 @@ class BtcFetcher(private val chain: BaseChain) {
             val estimateSmartFeeRequest = JsonRpcRequest(
                 method = "estimatesmartfee", params = listOf(2)
             )
-            val estimateSmartFeeResponse = jsonRpcResponse(chain.mainUrl, estimateSmartFeeRequest)
+            val estimateSmartFeeResponse = jsonRpcResponse(
+                chain.mainUrl, estimateSmartFeeRequest, mapOf("x-api-key" to chain.tatumApiKey)
+            )
             val estimateSmartFeeJsonObject = Gson().fromJson(
                 estimateSmartFeeResponse.body?.string(), JsonObject::class.java
             )
@@ -104,6 +107,23 @@ class BtcFetcher(private val chain: BaseChain) {
                 null
             }
 
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Synchronous, no-network fee estimate using the utxo set / fee rate the wallet
+     * refresh cycle already cached ([btcUtxo], [btcFastFee]). Returns null when that
+     * cache isn't populated yet, so callers can fall back to [initFee] in that case.
+     */
+    fun cachedFee(memo: String = ""): BigDecimal? {
+        val feeRate = btcFastFee?.takeIf { it > 0L } ?: return null
+        val utxoJson = btcUtxo?.takeIf { it.isNotEmpty() } ?: return null
+        return try {
+            val utxo = JsonParser.parseString(utxoJson).asJsonArray.map { it.asJsonObject }
+                .toMutableList()
+            feeRate.toBigDecimal().multiply(bitVBytesFee(utxo, memo)).setScale(0, RoundingMode.UP)
         } catch (e: Exception) {
             null
         }
@@ -215,8 +235,10 @@ class BtcFetcher(private val chain: BaseChain) {
                                 tx["status"].asJsonObject["block_hash"].asString
                             )
                         )
-                        val rawTransactionResponse =
-                            jsonRpcResponse(chain.mainUrl, rawTransactionRequest)
+                        val rawTransactionResponse = jsonRpcResponse(
+                            chain.mainUrl, rawTransactionRequest,
+                            mapOf("x-api-key" to (chain as ChainBitCoin86).tatumApiKey)
+                        )
                         val rawTransactionJsonObject = Gson().fromJson(
                             rawTransactionResponse.body?.string(), JsonObject::class.java
                         )
@@ -263,16 +285,25 @@ class BtcFetcher(private val chain: BaseChain) {
     fun txOutputString(
         receiver: String, toAmount: String, changedValue: String, opReturn: String?
     ): String {
+        val change = changedValue.toLongOrNull() ?: 0L
+        val changeOutput = if (change > DUST_THRESHOLD) {
+            """
+                {
+                    address: '${chain.mainAddress}',
+                    value: ${change}
+                },
+            """
+        } else {
+            ""
+        }
+
         return if (opReturn?.isNotEmpty() == true) {
             """
                 {
                     address: '${receiver}',
                     value: ${toAmount.toLong()}
                 },
-                {
-                    address: '${chain.mainAddress}',
-                    value: ${changedValue.toLong()}
-                },
+                $changeOutput
                 m('${opReturn}')
                 """
 
@@ -282,14 +313,13 @@ class BtcFetcher(private val chain: BaseChain) {
                     address: '${receiver}',
                     value: ${toAmount.toLong()}
                 },
-                {
-                    address: '${chain.mainAddress}',
-                    value: ${changedValue.toLong()}
-                },
+                $changeOutput
             """
         }
     }
 }
+
+const val DUST_THRESHOLD = 546L
 
 const val OP_RETURN = 83
 

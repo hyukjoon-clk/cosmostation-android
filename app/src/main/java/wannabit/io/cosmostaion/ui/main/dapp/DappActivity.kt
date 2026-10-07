@@ -2054,8 +2054,10 @@ class DappActivity : BaseActivity() {
                         val pushTxRequest = JsonRpcRequest(
                             method = "sendrawtransaction", params = listOf(txHex)
                         )
-                        val pushTxResponse =
-                            jsonRpcResponse(selectBitcoin?.mainUrl ?: "", pushTxRequest)
+                        val pushTxResponse = jsonRpcResponse(
+                            selectBitcoin?.mainUrl ?: "", pushTxRequest,
+                            mapOf("x-api-key" to ((selectBitcoin as? ChainBitCoin86)?.tatumApiKey ?: ""))
+                        )
                         val pushTxJsonObject = Gson().fromJson(
                             pushTxResponse.body?.string(), JsonObject::class.java
                         )
@@ -2103,7 +2105,13 @@ class DappActivity : BaseActivity() {
                                             method = "sendrawtransaction", params = listOf(txHex)
                                         )
                                         val bitSendTxResponse = jsonRpcResponse(
-                                            selectBitcoin?.mainUrl ?: "", bitSendTxRequest
+                                            selectBitcoin?.mainUrl ?: "", bitSendTxRequest,
+                                            mapOf(
+                                                "x-api-key" to (
+                                                    (selectBitcoin as? ChainBitCoin86)?.tatumApiKey
+                                                        ?: ""
+                                                    )
+                                            )
                                         )
                                         val bitSendTxJsonObject = Gson().fromJson(
                                             bitSendTxResponse.body?.string(), JsonObject::class.java

@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -42,7 +43,10 @@ import wannabit.io.cosmostaion.common.BaseData
 import wannabit.io.cosmostaion.common.makeToast
 import wannabit.io.cosmostaion.common.visibleOrGone
 import wannabit.io.cosmostaion.data.model.res.Asset
+import wannabit.io.cosmostaion.data.repository.wallet.WalletRepositoryImpl
 import wannabit.io.cosmostaion.data.viewmodel.ApplicationViewModel
+import wannabit.io.cosmostaion.data.viewmodel.intro.WalletViewModel
+import wannabit.io.cosmostaion.data.viewmodel.intro.WalletViewModelProviderFactory
 import wannabit.io.cosmostaion.database.Prefs
 import wannabit.io.cosmostaion.databinding.DialogBabylonInfoBinding
 import wannabit.io.cosmostaion.databinding.FragmentCoinBinding
@@ -62,6 +66,8 @@ class MajorCryptoFragment : Fragment() {
 
     private lateinit var selectedChain: BaseChain
 
+    private lateinit var walletViewModel: WalletViewModel
+
     private var moveBalances: MutableList<Pair<String?, BigDecimal?>> = mutableListOf()
     private var searchMoveBalances: MutableList<Pair<String?, BigDecimal?>> = mutableListOf()
     private var moveNativeBalances: MutableList<Pair<String?, BigDecimal?>> = mutableListOf()
@@ -74,6 +80,7 @@ class MajorCryptoFragment : Fragment() {
     private var searchSolanaTokens: MutableList<JsonObject> = mutableListOf()
 
     private var isClickable = true
+    private var isBtcFeeChecking = false
 
     companion object {
         @JvmStatic
@@ -112,6 +119,16 @@ class MajorCryptoFragment : Fragment() {
                 selectedChain = it
             }
         }
+
+        val walletRepository = WalletRepositoryImpl()
+        val walletViewModelProviderFactory = WalletViewModelProviderFactory(walletRepository)
+        walletViewModel =
+            ViewModelProvider(this, walletViewModelProviderFactory)[WalletViewModel::class.java]
+
+        (selectedChain as? ChainBitCoin86)?.let { chain ->
+            walletViewModel.prefetchBtcSendFee(chain)
+        }
+
         binding.apply {
             dydxTrade.visibility = View.GONE
             babylonStaking.visibleOrGone(
@@ -305,26 +322,36 @@ class MajorCryptoFragment : Fragment() {
                     bitCryptoAdapter.notifyDataSetChanged()
 
                     bitCryptoAdapter.setOnItemClickListener { chain, denom ->
-                        (chain as ChainBitCoin86).btcFetcher()?.let { fetcher ->
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                val btcFee = fetcher.initFee()
-                                withContext(Dispatchers.Main) {
-                                    if (btcFee == null) return@withContext
-                                    if (fetcher.btcBalances > btcFee) {
-                                        handleOneClickWithDelay(
-                                            CommonTransferFragment.newInstance(
-                                                chain, denom, SendAssetType.BIT_COIN
-                                            )
-                                        )
+                        if (isBtcFeeChecking) return@setOnItemClickListener
 
+                        (chain as ChainBitCoin86).btcFetcher()?.let { fetcher ->
+                            fun handleFee(btcFee: BigDecimal?) {
+                                isBtcFeeChecking = false
+                                if (btcFee == null) return
+                                if (fetcher.btcBalances > btcFee) {
+                                    handleOneClickWithDelay(
+                                        CommonTransferFragment.newInstance(
+                                            chain, denom, SendAssetType.BIT_COIN
+                                        )
+                                    )
+
+                                } else {
+                                    if (fetcher.btcPendingInput > BigDecimal.ZERO) {
+                                        requireContext().makeToast(R.string.error_pending_balance)
                                     } else {
-                                        if (fetcher.btcPendingInput > BigDecimal.ZERO) {
-                                            requireContext().makeToast(R.string.error_pending_balance)
-                                        } else {
-                                            requireContext().makeToast(R.string.error_not_enough_fee)
-                                        }
-                                        return@withContext
+                                        requireContext().makeToast(R.string.error_not_enough_fee)
                                     }
+                                }
+                            }
+
+                            val cachedFee = fetcher.cachedFee()
+                            if (cachedFee != null) {
+                                handleFee(cachedFee)
+                            } else {
+                                isBtcFeeChecking = true
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    val btcFee = fetcher.initFee()
+                                    withContext(Dispatchers.Main) { handleFee(btcFee) }
                                 }
                             }
                         }
@@ -596,17 +623,17 @@ class MajorCryptoFragment : Fragment() {
     }
 
     private fun handleOneClickWithDelay(bottomSheetDialogFragment: BottomSheetDialogFragment) {
-        if (isClickable) {
-            isClickable = false
-
-            bottomSheetDialogFragment.show(
-                requireActivity().supportFragmentManager, bottomSheetDialogFragment::class.java.name
-            )
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                isClickable = true
-            }, 300)
+        val tag = bottomSheetDialogFragment::class.java.name
+        if (!isClickable || requireActivity().supportFragmentManager.findFragmentByTag(tag) != null) {
+            return
         }
+        isClickable = false
+
+        bottomSheetDialogFragment.show(requireActivity().supportFragmentManager, tag)
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            isClickable = true
+        }, 300)
     }
 
     private fun showBabylonInfo() {

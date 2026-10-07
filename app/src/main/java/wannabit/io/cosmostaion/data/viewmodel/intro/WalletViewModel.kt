@@ -279,6 +279,36 @@ class WalletViewModel(private val walletRepository: WalletRepository) : ViewMode
     private val _chainDataErrorMessage = MutableLiveData<String>()
     val chainDataErrorMessage: LiveData<String> get() = _chainDataErrorMessage
 
+    fun prefetchBtcSendFee(chain: ChainBitCoin86) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            val loadFeeDeferred = async { walletRepository.btcFee(chain) }
+            val loadUtxoDeferred = async { walletRepository.mempoolUtxo(chain) }
+            val loadIsValidDeferred = async { walletRepository.mempoolIsValidAddress(chain) }
+
+            val feeResult = loadFeeDeferred.await()
+            chain.btcFetcher()?.btcFastFee =
+                if (feeResult is NetworkResult.Success && feeResult.data is JsonObject) {
+                    feeResult.data["fastestFee"].asLong
+                } else {
+                    0L
+                }
+
+            val utxoResult = loadUtxoDeferred.await()
+            val isValidResult = loadIsValidDeferred.await()
+            if (utxoResult is NetworkResult.Success && isValidResult is NetworkResult.Success && isValidResult.data is JsonObject) {
+                fun dummyHasInscription(txid: String, vout: Int): Boolean {
+                    return false
+                }
+
+                val availableUTxo = getAvailableUtxosFromRaw(
+                    utxoResult.data.toString(), isValidResult.data.toString(), ::dummyHasInscription
+                )
+                chain.btcFetcher()?.btcUtxo = printAvailableUtxosJson(availableUTxo)
+            }
+
+        } catch (e: Exception) { }
+    }
+
     fun loadBtcStakeData(chain: ChainBitCoin86) = viewModelScope.launch(Dispatchers.IO) {
         val channel = if (chain.isTestnet) {
             ChainBabylonTestnet().cosmosFetcher()?.getChannel()
