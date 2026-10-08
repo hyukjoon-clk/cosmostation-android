@@ -1359,16 +1359,24 @@ class TxViewModel(private val txRepository: TxRepository) : ViewModel() {
             BitcoinJs.mergeFunction(initBTCStakingFunction)
             BitcoinJs.executeFunction("initBTCStakingFunction()")
 
-            val version = selectedChain.btcFetcher?.btcNetworkInfo?.get("data")?.asJsonObject?.get(
-                "params"
-            )?.asJsonObject?.get("bbn")?.asJsonArray?.last()?.asJsonObject?.get("version")?.asInt
-                ?: 6
+            // Must be the params version this delegation's staking script was actually
+            // built under (not the network's current/latest version) — otherwise the
+            // covenant pubkeys baked into the reconstructed script won't match the
+            // real on-chain UTXO's script, and signing fails with "Can not sign for
+            // input #0 with the key ...".
+            val version = staked?.first?.get("params_version")?.asInt ?: 6
             val feeRate = selectedChain.btcFetcher?.btcFastFee
             val provider = staked?.second?.provider?.btcPk?.toByteArray()?.toHex()
             val toStakeAmount =
                 staked?.first?.get("delegation_staking")?.asJsonObject?.get("staking_amount")?.asString
+            val stakeTx =
+                staked?.first?.get("delegation_staking")?.asJsonObject?.get("staking_tx_hex")?.asString
             val earlyUnBondingTx =
                 staked?.first?.get("delegation_unbonding")?.asJsonObject?.get("unbonding_tx")?.asString
+            val stakingSlashingTx = staked?.first?.get("delegation_staking")?.asJsonObject?.get("slashing")
+                ?.asJsonObject?.get("slashing_tx_hex")?.asString
+            val unbondingSlashingTx = staked?.first?.get("delegation_unbonding")?.asJsonObject?.get("slashing")
+                ?.asJsonObject?.get("unbonding_slashing_tx_hex")?.asString
 
             val stakerBtcInfo = JsonObject().apply {
                 addProperty("address", signerAddress)
@@ -1385,21 +1393,27 @@ class TxViewModel(private val txRepository: TxRepository) : ViewModel() {
             }
 
             val state = staked?.first?.get("state")?.asString
+            val sourceTx = when (state) {
+                "EARLY_UNBONDING_WITHDRAWABLE" -> earlyUnBondingTx
+                "TIMELOCK_SLASHING_WITHDRAWABLE" -> stakingSlashingTx
+                "EARLY_UNBONDING_SLASHING_WITHDRAWABLE" -> unbondingSlashingTx
+                else -> stakeTx
+            }
             val createSignedBtcEarlyWithdraw = if (state == "EARLY_UNBONDING_WITHDRAWABLE") {
                 """function createSignedBtcEarlyWithdraw() {
-                    const unbonding = createSignedBtcWithdrawEarlyUnbondedTransaction('${stakerBtcInfo}', '${stakingInput}', ${version}, '${earlyUnBondingTx}', ${feeRate});
+                    const unbonding = createSignedBtcWithdrawEarlyUnbondedTransaction('${stakerBtcInfo}', '${stakingInput}', ${version}, '${sourceTx}', ${feeRate});
                          return unbonding;
                     }""".trimMargin()
 
             } else if (state == "TIMELOCK_WITHDRAWABLE") {
                 """function createSignedBtcEarlyWithdraw() {
-                    const unbonding = createSignedBtcWithdrawStakingExpiredTransaction('${stakerBtcInfo}', '${stakingInput}', ${version}, '${earlyUnBondingTx}', ${feeRate});
+                    const unbonding = createSignedBtcWithdrawStakingExpiredTransaction('${stakerBtcInfo}', '${stakingInput}', ${version}, '${sourceTx}', ${feeRate});
                          return unbonding;
                     }""".trimMargin()
 
             } else {
                 """function createSignedBtcEarlyWithdraw() {
-                    const unbonding = createSignedBtcWithdrawSlashingTransaction('${stakerBtcInfo}', '${stakingInput}', ${version}, '${earlyUnBondingTx}', ${feeRate});
+                    const unbonding = createSignedBtcWithdrawSlashingTransaction('${stakerBtcInfo}', '${stakingInput}', ${version}, '${sourceTx}', ${feeRate});
                          return unbonding;
                     }""".trimMargin()
 

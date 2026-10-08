@@ -24,7 +24,8 @@ class ChainBitCoin49 : ChainBitCoin86(), Parcelable {
 
     override var coinSymbol: String = "BTC"
 
-    override var mainUrl: String = "https://bitcoin-mainnet.gateway.tatum.io"
+    override var mainUrl: String =
+        "https://shared.eu-central-1.getblock.io/557d863c12014af88504ebffe263f372"
 
     override suspend fun setInfoWithPrivateKey(context: Context, privateKey: ByteArray?) {
         this.privateKey = privateKey

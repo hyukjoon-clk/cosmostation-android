@@ -93,9 +93,7 @@ class BtcFetcher(private val chain: BaseChain) {
             val estimateSmartFeeRequest = JsonRpcRequest(
                 method = "estimatesmartfee", params = listOf(2)
             )
-            val estimateSmartFeeResponse = jsonRpcResponse(
-                chain.mainUrl, estimateSmartFeeRequest, mapOf("x-api-key" to chain.tatumApiKey)
-            )
+            val estimateSmartFeeResponse = jsonRpcResponse(chain.mainUrl, estimateSmartFeeRequest)
             val estimateSmartFeeJsonObject = Gson().fromJson(
                 estimateSmartFeeResponse.body?.string(), JsonObject::class.java
             )
@@ -235,10 +233,8 @@ class BtcFetcher(private val chain: BaseChain) {
                                 tx["status"].asJsonObject["block_hash"].asString
                             )
                         )
-                        val rawTransactionResponse = jsonRpcResponse(
-                            chain.mainUrl, rawTransactionRequest,
-                            mapOf("x-api-key" to (chain as ChainBitCoin86).tatumApiKey)
-                        )
+                        val rawTransactionResponse =
+                            jsonRpcResponse(chain.mainUrl, rawTransactionRequest)
                         val rawTransactionJsonObject = Gson().fromJson(
                             rawTransactionResponse.body?.string(), JsonObject::class.java
                         )

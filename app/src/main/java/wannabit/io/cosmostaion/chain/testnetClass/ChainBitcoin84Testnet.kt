@@ -5,7 +5,6 @@ import android.os.Parcelable
 import com.google.common.collect.ImmutableList
 import kotlinx.parcelize.Parcelize
 import org.bitcoinj.crypto.ChildNumber
-import wannabit.io.cosmostaion.BuildConfig
 import wannabit.io.cosmostaion.chain.AccountKeyType
 import wannabit.io.cosmostaion.chain.PubKeyType
 import wannabit.io.cosmostaion.chain.majorClass.ChainBitCoin86
@@ -27,9 +26,9 @@ class ChainBitcoin84Testnet : ChainBitCoin86(), Parcelable {
 
     override var coinSymbol: String = "sBTC"
 
-    override var mainUrl: String = "https://bitcoin-signet.gateway.tatum.io"
+    override var mainUrl: String =
+        "https://shared.eu-central-1.getblock.io/76295b3d7c1f4a4691f131bc866dd2df"
     override var apiUrl: String = "https://staking-api.testnet.babylonlabs.io"
-    override var tatumApiKey: String = BuildConfig.TATUM_API_KEY_TESTNET
 
     override suspend fun setInfoWithPrivateKey(context: Context, privateKey: ByteArray?) {
         this.privateKey = privateKey

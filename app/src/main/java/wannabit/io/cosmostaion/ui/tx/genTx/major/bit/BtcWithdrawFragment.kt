@@ -1,5 +1,6 @@
 package wannabit.io.cosmostaion.ui.tx.genTx.major.bit
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
@@ -208,6 +209,7 @@ class BtcWithdrawFragment(
         }
     }
 
+    @SuppressLint("WrongConstant")
     private fun setUpClickAction() {
         binding.apply {
             validatorView.setOnClickListener {
