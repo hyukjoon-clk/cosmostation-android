@@ -29,5 +29,5 @@ class ChainKiiEvm : BaseChain(), Parcelable {
 
     override var supportEvm: Boolean = true
     override var coinSymbol: String = "KII"
-    override var evmRpcURL: String = "https://rpc-kiichain.mainnet.cosmoslabs.kr"
+    override var evmRpcURL: String = "https://rpc-evm-kiichain.mainnet.cosmoslabs.kr"
 }
